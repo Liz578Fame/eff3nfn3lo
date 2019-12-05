@@ -1,0 +1,9591 @@
+      subroutine eff3nfn3lo1
+c        effective three-nucleon force up to n3lo
+c
+c        the n2lo part is the version of 04/22/2012 
+c        and based upon
+c        Holt, Kaiser, Weise, PRC 81, 024002 (2010).
+c
+c        the n3lo part is to be added.
+c
+c
+c        authors of code:
+c                   r. machleidt et al.
+c                   department of physics
+c                   university of idaho
+c                   machleid@uidaho.edu
+c                   
+c
+      implicit real*8 (a-h,o-z)
+c
+c
+      common /crdwrt/ kread,kwrite,kpunch,kda(9)
+c
+c        arguments and values of this subroutine
+c
+      common /cpot/   v(6),xmev,ymev
+      common /cstate/ j,heform,sing,trip,coup,endep,label
+c
+c
+c        this has been the end of the common-blocks containing
+c        the arguments and values of this subroutine.
+c
+c        specifications for these two common blocks
+c
+      logical heform,sing,trip,coup,endep
+c
+c
+c        common block for all eff-subroutines
+c
+      common /ceff/ vj(32,270),c(20,270),fff,ff,f(52),aa(96),ai(19,120),
+     1                wnn(3),wdd(3),x,xx,y,yy,xy2,xxpyy,ex,ey,eem12,
+     2                gaa(3),fpia(3),ezz1(3),ezz2(3),ct(96),wt(96),
+     3                ic(20,270),ift(3),mint(3),maxt(3),nt,
+     4                mge,mgg(40,3),mggo(40,3),ima(120,40,3),
+     5                imaa(3),imea(3),ime,im,mc,m,mg,inter,ide,idde,
+     6                indc(2,270),indpar(3),indxy
+c
+c         specifications for this common block
+c
+      logical indc,indxy,indpar
+c
+      common /crrreff/ rrr
+c
+c
+c        further specifications
+c
+      dimension vl(4),adminv(4,4),ldminv(4),mdminv(4)
+      character*4 mesong(40)
+      logical index
+      logical indmg(40)
+      data mesong/'0-  ','0-t ','0-st','0+  ','0+st',
+     1            '1-  ','1-t ','1-tt','1-st','1-ss',
+     2            'c   ','ss  ','ls  ','sq  ','sk  ',
+     3            'sl  ',
+     4         24*'    '/
+      data index/.false./
+      data indmg/40*.false./
+      data jj/-1/
+      data pi/3.141592653589793d0/
+      save
+c
+c
+c
+c
+      inter=1
+c
+c
+c
+c
+c        call subroutine effpar once and only once
+c
+c
+      if (index) go to 30
+      index=.true.
+c
+c        if you want the potential to be zero for very large momenta,
+c        choose rrr=1000.
+c
+      rrr=1000.
+c
+c
+      call effpar
+c
+c
+      iftgo=ift(inter)+1
+      dwn=1.d0/wnn(inter)
+c
+c
+      iman=imaa(inter)
+      imen=imea(inter)
+c
+c
+      ez1=ezz1(inter)
+      ez2=ezz2(inter)
+c
+c
+c        prepare constant over-all factor
+c
+      fac=pi/(2.d0*pi)**3*dwn*dwn
+c     ---------------------------
+c
+c
+c
+c
+   30 if (j.eq.jj) go to 50
+      jj=j
+      if (j.eq.0) go to 50
+      aj=dble(j)
+      aj1=dble(j+1)
+      a2j1=dble(2*j+1)
+      aaj6=dsqrt(aj*aj1)
+c
+c        coefficient matrix for the translations into lsj formalism
+c
+      adminv(1,1)=aj1
+      adminv(1,2)=aj
+      adminv(1,3)=-aaj6
+      adminv(1,4)=-aaj6
+      adminv(2,1)=aj
+      adminv(2,2)=aj1
+      adminv(2,3)=aaj6
+      adminv(2,4)=aaj6
+      adminv(3,1)=aaj6
+      adminv(3,2)=-aaj6
+      adminv(3,3)=aj1
+      adminv(3,4)=-aj
+      adminv(4,1)=aaj6
+      adminv(4,2)=-aaj6
+      adminv(4,3)=-aj
+      adminv(4,4)=aj1
+c
+c       inversion
+c
+      call dminveff (adminv,4,deter,ldminv,mdminv)
+c
+c
+c
+c
+c        prepare expressions depending on x and y
+c        ----------------------------------------
+c        ----------------------------------------
+c
+c
+c
+c
+   50 xa=xmev*dwn
+      ya=ymev*dwn
+      indxy=.false.
+      x=xa
+      xx=x*x
+      y=ya
+      yy=y*y
+      xy2=x*y*2.d0
+      xxpyy=xx+yy
+      ex=dsqrt(1.d0+xx)
+      ey=dsqrt(1.d0+yy)
+      eem12=(ex*ey-1.d0)*2.d0
+c
+c
+      xy=xy2*0.5d0
+      ee=ex*ey
+      ree=dsqrt(ee)
+      eem1=ee-1.d0
+      eme=ex-ey
+      emeh=eme*0.5d0
+      emehq=emeh*emeh
+      eep1=ee+1.d0
+       epe=ex+ey
+      xxyy=xx*yy
+c
+c
+      xxpyyh=xxpyy*0.5d0
+      xy3=xy*3.d0
+      xy4=xy*4.d0
+c
+c
+c
+c
+      do 63 iv=1,6
+   63 v(iv)=0.d0
+      do 65 il=iman,imen
+      do 65 iv=1,32
+   65 vj(iv,il)=0.d0
+c
+c
+c
+c
+c        prepare over-all factor
+c
+c
+      go to (70,71,72,71,72,75,76),iftgo
+c
+c        no additional factor
+c
+   70 fff=fac
+      go to 80
+c
+c        minimal relativity
+c
+   71 fff=fac/ree
+      go to 80
+c
+c        factor m/e*m/e
+c
+   72 fff=fac/ee
+      go to 80
+c
+c        sharp cutoff
+c
+   75 if (xmev.gt.ez1.or.ymev.gt.ez1) then
+      return
+      else
+      fff=fac
+      end if
+      go to 80
+c
+c        exponential cutoff
+c
+   76 expo=(xmev/ez1)**(2.d0*ez2)+(ymev/ez1)**(2.d0*ez2)
+      if (expo.gt.rrr) then
+      expo=rrr
+      end if
+      fff=fac*dexp(-expo)
+c
+c
+   80 continue
+c
+c
+c
+c
+c        contributions
+c        -------------
+c        -------------
+c
+c
+c
+c
+      do 5995 img=1,mge
+      mg=mggo(img,inter)
+      if (mg.gt.16) go to 9807
+      if (mg.eq.0) go to 8010
+      me=mgg(mg,inter)
+      go to (9807,9807,9807,9807,9807,9807,9807,9807,9807,9807,
+     1       1100,1200,1300,1400,1500,1600),mg
+c
+c
+c
+c
+c        c   ,central force
+c        ------------------
+c
+c
+c
+c
+ 1100 mc=1
+c
+      ff=1.d0
+      f(1)=2.d0
+      f(2)=0.d0
+      f(3)=f(1)
+      f(4)=f(2)
+      f(5)=f(2)
+      f(6)=f(1)
+      f(7)=-f(1)
+      f(8)=f(7)
+c
+      call effstr(1,1,me)
+      go to 5995
+c
+c
+c
+c
+c        ss  , spin-spin force
+c        ---------------------
+c
+c
+c
+c
+ 1200 mc=1
+c
+      ff=1.d0
+      f(1)=-6.d0
+      f(2)=0.d0
+      f(3)=2.d0
+      f(4)=0.d0
+      f(5)=0.d0
+      f(6)=f(3)
+      f(7)=-f(3)
+      f(8)=f(7)
+c
+      call effstr(1,1,me)
+      go to 5995
+c
+c
+c
+c
+c        ls  , spin-orbit force
+c        ----------------------
+c
+c
+c
+c
+ 1300 mc=1
+c
+      ff=1.d0
+      f(1)=0.d0
+      f(2)=0.d0
+      f(3)=0.d0
+      f(4)=-xy2
+      f(5)=-xy2
+      f(6)=0.d0
+      f(7)=0.d0
+      f(8)=0.d0
+      f(9)=0.d0
+      f(10)=+xy2
+      f(11)=-xy2
+c
+      call effstr(2,1,me)
+      go to 5995
+c
+c
+c
+c
+c        sq  , sq tensor force (where q denotes the momentum transfer)
+c        ---------------------
+c
+c
+c
+c
+ 1400 mc=1
+c
+      ff=1.d0
+      f(1)=-xxpyy*2.0d0
+      f(2)=xy*4.d0
+      f(3)=-f(1)
+      f(4)=-f(2)
+      f(5)=f(2)
+      f(6)=f(1)
+      f(7)=(xx-yy)*2.0d0
+      f(8)=-f(7)
+c
+      call effstr(1,1,me)
+      go to 5995
+c
+c
+c
+c
+c        sk  , sk tensor force (where k denotes the average momentum)
+c        ---------------------
+c
+c
+c
+c
+ 1500 mc=1
+c
+      ff=0.25d0
+      f(1)=-xxpyy*2.0d0
+      f(2)=-xy*4.d0
+      f(3)=-f(1)
+      f(4)=-f(2)
+      f(5)=f(2)
+      f(6)=f(1)
+      f(7)=(xx-yy)*2.0d0
+      f(8)=-f(7)
+c
+      call effstr(1,1,me)
+      go to 5995
+c
+c
+c
+c
+c        sl  , "quadratic spin-orbit force"
+c               or sigma-l operator
+c        ----------------------------------
+c
+c
+c
+c
+ 1600 mc=1
+c
+      ff=1.d0
+      f(1)=-xxyy*2.d0
+      f(2)=0.d0
+      f(3)=f(1)
+      f(4)=f(2)
+      f(5)=f(2)
+      f(6)=-f(1)
+      f(7)=f(1)
+      f(8)=f(7)
+      f(9)=f(6)*2.d0
+c
+      call effstr(4,1,me)
+      go to 5995
+c
+c
+c
+c
+c
+c        this has been the end of the contributions
+c        ------------------------------------------
+c
+c
+c
+c
+c        errors and warnings
+c        -------------------
+c
+c
+c
+c
+ 9807 if (indmg(mg)) go to 5995
+      write (kwrite,19000) mesong(mg)
+19000 format(1h ////' warng. in eff3nf: contribution ',a4,' does not exi
+     1st in this program.'/' contribution ignored. execution continued.'
+     2////)
+      indmg(mg)=.true.
+c
+c
+c
+c
+ 5995 continue
+c
+c
+c
+c
+c        add up contributions
+c        --------------------
+c
+c
+c
+c
+ 8010 continue
+c
+c
+c
+c        add up terms
+c        -----------
+c
+      do 8155 il=iman,imen
+      do 8155 iv=1,6
+ 8155 v(iv)=v(iv)+vj(iv,il)
+c
+c
+c
+c
+      if (j.eq.0.or..not.heform) go to 8950
+c
+c
+c         translation into (combinations of) helicity states
+c
+c
+      do 8585 i=1,4
+ 8585 vl(i)=v(i+2)
+c
+      do 8520 ii=1,4
+      iii=ii+2
+      v(iii)=0.d0
+c
+      do 8515 i=1,4
+ 8515 v(iii)=v(iii)+adminv(ii,i)*vl(i)
+ 8520 v(iii)=v(iii)*a2j1
+c
+c
+c
+c
+ 8950 return
+      end
+      subroutine effpar
+c
+c        effpar reads, writes, and stores the parameter for all 
+c        eff-subroutines.
+c
+c
+      implicit real*8 (a-h,o-z)
+c
+c
+      common /crdwrt/ kread,kwrite,kpunch,kda(9)
+c
+      common /cstate/ j,heform,sing,trip,coup,endep,label
+      logical heform,sing,trip,coup,endep
+c
+c
+c        common block for all eff-subroutines
+c
+      common /ceff/ vj(32,270),c(20,270),fff,ff,f(52),aa(96),ai(19,120),
+     1                wnn(3),wdd(3),x,xx,y,yy,xy2,xxpyy,ex,ey,eem12,
+     2                gaa(3),fpia(3),ezz1(3),ezz2(3),ct(96),wt(96),
+     3                ic(20,270),ift(3),mint(3),maxt(3),nt,
+     4                mge,mgg(40,3),mggo(40,3),ima(120,40,3),
+     5                imaa(3),imea(3),ime,im,mc,m,mg,inter,ide,idde,
+     6                indc(2,270),indpar(3),indxy
+c
+c         specifications for this common block
+c
+      logical indc,indxy,indpar
+c
+      common /cpareff/ cb1,cb2,cb3,cb4,css,ctt,cdd,cee,qf
+c
+c
+c
+c        further specifications
+c
+      dimension cc(5),cca(5)
+      integer name(3),nname(15)
+      integer imga(3)
+      integer cut,cuta,fun,end
+      integer mesong(40)
+      logical index
+      logical indca
+      data mesong/'0-  ','0-t ','0-st','0+  ','0+st',
+     1            '1-  ','1-t ','1-tt','1-st','1-ss',
+     2            'c   ','ss  ','ls  ','sq  ','sk  ',
+     3            'sl  ',
+     4         24*'    '/
+      data index/.false./
+      data pi/3.141592653589793d0/
+      data uf/197.327d0/
+      data cut/'cut '/,cuta/'cuta'/
+      data fun/'fun '/,end/'end '/
+      save
+c
+c
+c
+c
+c
+10070 format (2a4,a2,15a4)
+10001 format (1h )
+10002 format (1h /' contribution  par_1     par_2     mass     iso-spin
+     1    iprop'/9x,'fun-type  f u n c t i o n   p a r a m e t e r s')
+10003 format (2a4,a2,5f10.6)
+10022 format (2a4,a2,6f10.6)
+10023 format (1h, 2a4,a2,6f10.6)
+10004 format (1h ,2a4,a2,f12.6,f10.6,1x,f10.5,2(f7.1,3x))
+10075 format (1h ,2a4,a2,f4.1,1x,2f10.5,f13.5,f10.5)
+10006 format (2a4,a2,3i3)
+10007 format (1h ,2a4,a2,3i3)
+10008 format (1h ,60(1h-))
+10009 format (2a4,a2,i3,2f10.2)
+10010 format (1h ,2a4,a2,i3,2f10.2)
+10011 format (//' eff3nfn3lo: effective three-nucleon force up to n3lo')
+10015 format (' input-parameter-set:'/1h ,20(1h-))
+10016 format (1h ,2a4,a2,15a4)
+10020 format (1h ,2a4,a2,f12.6,4f9.2)
+10021 format (1h ,2a4,a2,5f10.6)
+c
+c
+c
+c
+      if (index) go to 50
+      index=.true.
+c
+c
+c
+c
+c        maxima of certain indices related to the dimension as follows:
+c        dimension c(mme,imee),ic(mice,imee),indc(mindce,imee),
+c                  mgg(mge,3),mggo(mge,3),mesong(mge),vj(32,imee),
+c                  ima(mee,mge,3)
+c
+      mge=40
+      mee=120
+      mme=20
+      mice=20
+      mindce=2
+      imb=1
+      ime=0
+      imee=270
+c        mme always ge mice, mindce
+c
+c        set all parameters and indices to zero or .false.
+c
+      do 1 int=1,3
+      imga(int)=0
+      indpar(int)=.false.
+      do 1 mgx=1,mge
+      mgg(mgx,int)=0
+    1 mggo(mgx,int)=0
+c
+c
+      do 2 il=1,imee
+      do 2 mm=1,mme
+      if (mm.le.mindce) indc(mm,il)=.false.
+      if (mm.le.mice) ic(mm,il)=0
+    2 c(mm,il)=0.d0
+      endep=.false.
+c
+c
+      pi2=pi*pi
+      pi3=pi2*pi
+      pi4=pi2*pi2
+c
+c
+c
+c
+c        reading and writing of first 4 cards
+c        --------------------------------------
+c        --------------------------------------
+c
+c
+c
+c        write headline and read and write name of parameter set
+c
+   50 continue
+      write (kwrite,10011)
+      write (kwrite,10008)
+      write (kwrite,10015)
+      read  (kread, 10070) name,nname
+      write (kwrite,10016) name,nname
+      if (inter.eq.1) label=name(1)
+      indpar(inter)=.true.
+      indca=.false.
+c
+c        read and write index-parameter concerning the factor for the
+c        whole potential and cutoff mass
+c
+c
+      read  (kread, 10009) name,ift(inter),ezz1(inter),ezz2(inter)
+      write (kwrite,10010) name,ift(inter),ezz1(inter),ezz2(inter)
+      iftyp=ift(inter)
+      if (iftyp.lt.0.or.iftyp.gt.6) go to 9003
+c
+c        read and write parameters for numerical integration
+c
+      read  (kread, 10006) name,mint(inter),maxt(inter)
+      write (kwrite,10007) name,mint(inter),maxt(inter)
+c
+c        read and write mass of nucleon
+c
+      read  (kread, 10003) name,wn,qf
+      write (kwrite,10004) name,wn,qf
+      wnq=wn*wn
+      dwn=1.d0/wn
+      dwnq=dwn*dwn
+      wnn(inter)=wn
+      qf=qf*uf*dwn
+      rho=2.d0*qf**3/(3.d0*pi2)
+c
+c        read and write ga and fpi
+c
+      read  (kread, 10003) name,ga,fpi
+      write (kwrite,10004) name,ga,fpi
+      ga2=ga*ga
+      ga4=ga2*ga2
+      ga6=ga4*ga2
+      fpi=fpi*dwn
+      fpi2=fpi*fpi
+      fpi4=fpi2*fpi2
+      fpi6=fpi4*fpi2
+      gaa(inter)=ga2
+      fpia(inter)=fpi2
+c
+c        read and write LECs of the pi-N Lagrangian
+c
+c        the c_i LECs
+c     read  (kread, 10003) name,cc
+c     write (kwrite,10021) name,cc
+      read  (kread, 10022) name,(cc(i), i=1,4), css,ctt 
+      write (kwrite, 10023) name,(cc(i), i=1,4), css,ctt 
+      cb1=cc(1)*wn*1.d-3
+      cb2=cc(2)*wn*1.d-3
+      cb3=cc(3)*wn*1.d-3
+      cb4=cc(4)*wn*1.d-3
+      css=css*wnq*1.d-2 
+      ctt=ctt*wnq*1.d-2 
+c
+c        the LECs cd and ce and their lambda
+      read  (kread, 10003) name,cc
+      write (kwrite,10004) name,cc
+      cdd=cc(1)*wn/(fpi2*cc(3))
+      cee=cc(2)*wn/(fpi4*cc(3))
+c
+c
+c
+c        write headline for parameters
+c
+      write (kwrite,10002)
+      write (kwrite,10008)
+c
+c
+c
+c        read, write and store parameters
+c        --------------------------------
+c        --------------------------------
+c
+c
+c
+   61 read  (kread, 10003) name,cc
+c
+c        check if end of input
+c
+      if (name(1).eq.end) go to 7001
+c
+c        check if data-card just read contains cut-off or
+c        function parameters
+c
+      if (name(1).eq.cut.or.name(1).eq.fun) go to 70
+c
+      if (name(1).eq.cuta) then
+      write (kwrite,10075) name,cc
+      indca=.true.
+      do i=1,5
+      cca(i)=cc(i)
+      end do
+      go to 61
+      end if
+
+c
+c
+c
+c
+c        write parameters which are no cut-off or function parameters
+c        ------------------------------------------------------------
+c
+c
+c
+c
+      write (kwrite,10004) name,cc
+c
+c
+c        find out number of contribution mg
+c
+      do 63 mg=1,mge
+      if (name(1).eq.mesong(mg)) go to 64
+   63 continue
+      go to 9807
+c
+c
+c
+c
+c        store parameters which are no cut-off or function parameters
+c        ------------------------------------------------------------
+c
+c
+c
+c
+   64 ime=ime+1
+      if (ime.gt.imee) go to 9011
+      mgg(mg,inter)=mgg(mg,inter)+1
+      m=mgg(mg,inter)
+      if (m.gt.mee) go to 9001
+      ima(m,mg,inter)=ime
+      if (m.ne.1) go to 65
+      imga(inter)=imga(inter)+1
+      mggo(imga(inter),inter)=mg
+   65 continue
+c
+c
+      c(1,ime)=cc(1)
+c
+c
+      if (mg.ge.11.and.cc(2).ne.0.d0) then
+      c(1,ime)=(cc(1)/(2.d0*cc(2))*wn)**2
+      if (cc(1).lt.0.d0) c(1,ime)=-c(1,ime)
+      end if
+c
+c
+c        store meson mass square in units of nucleon mass square
+      c(4,ime)=cc(3)*cc(3)*dwnq
+c
+c        test iso-spin
+      icc=cc(4)
+      if (icc.ne.0.and.icc.ne.1) go to 9004
+c         store isospin as logical constant
+      if (icc.eq.1) indc(1,ime)=.true.
+c        store and test iprsp
+      icc=cc(5)
+      ic(1,ime)=icc
+      if (iabs(ic(1,ime)).gt.1) go to 9005
+c
+c        index values for further storing
+      mi=4
+      mm=5
+c
+c
+c        check if there is a `cutall' cutoff
+c
+      if (indca) then
+      name(1)=cut
+      do i=1,5
+      cc(i)=cca(i)
+      end do
+      go to 72
+      else
+      go to 61
+      end if
+c
+c
+c
+c
+c        write cut-off or function parameters
+c        ------------------------------------
+c
+c
+c
+c
+   70 write (kwrite,10075) name,cc
+c
+c
+   72 continue
+c
+c
+c
+c
+c        store parameters
+c        ----------------
+c
+c
+c
+      ityp=cc(1)
+c
+      if (ityp.eq.0) go to 5995
+      if (ityp.lt.1.or.ityp.gt.166) go to 9002
+c
+      im=ime
+c
+c        store typ of cut-off or function
+      ic(mi,im)=ityp
+c
+      if (ityp.le.10) then
+c        store and test typ of propagator of cut-off
+      ic(mi+1,im)=cc(2)
+      if (ic(mi+1,im).lt.0.or.ic(mi+1,im).gt.1) go to 9006
+      end if
+c
+      go to (100,100,300,9002,500,600,9002,9002,9002,9002,
+     1 1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,
+     2 2100,2200,2300,2400,2500,2600,2700,2800,2900,3000,
+     3 3100,3200,3300,3400,3500,3600,3700,3800,3900,4000,
+     4 4100,4200,4300,4400,4500,4600,4700,4800,4900,5000,
+     5 5100,5200,5300,5400,5500,5600,5700,5800,5900,6000,
+     6 6100,6200,6300,6400,6500,6600,6700,6800,6900,7000,
+     7 7100,7200,7300,7400,7500,7600,7700,7800,7900,8000,
+     8 8100,8200,8300,8400,8500,8600,8700,8800,8900,9000,
+     9 9100,9200,9300,9400,9500,9600,9700,9800,9900,10000,
+     1 10100,10200,10300,10400,10500,10600,10700,10800,
+     2 10900,11000,11100,11200,11300,11400,11500,11600,
+     3 11700,11800,11900,12000,12100,12200,12300,12400,
+     4 12500,12600,12700,12800,12900,13000,13100,13200,
+     5 13300,13400,13500,13600,13700,13800,13900,14000,
+     6 14100,14200,14300,14400,14500,14600,14700,14800,
+     7 14900,15000,15100,15200,15300,15400,15500,15600,
+     8 15700,15800,15900,16000,16100,16200,16300,16400,
+     9 16500,16600),ityp
+c
+c
+c
+c
+c        cut-off of dipole type
+c        **********************
+c
+c
+c        store and test exponent of cut-off
+  100 ic(mi+2,im)=cc(3)
+      if (ic(mi+2,im).lt.0) go to 9009
+      if (ic(mi+2,im).gt.0) go to 101
+c        exponent is zero, omit cut-off
+      ic(mi,im)=0
+      ic(mi+1,im)=0
+      go to 5995
+c        store cut-off mass for denominator
+  101 c(mm+1,im)=cc(4)*cc(4)*dwnq
+c        store numerator of cut-off
+      c(mm,im)=c(mm+1,im)
+      if (ityp.eq.2)     c(mm,im)=c(mm,im)-c(4,im)
+      mi=mi+3
+      mm=mm+2
+      go to 5995
+c
+c
+c
+c
+c        exponential form factor of momentum transfer
+c        ********************************************
+c
+c
+c        check exponent
+  300 if (cc(3).lt.0.d0) go to 9009
+      if (cc(3).gt.0.d0) go to 301
+c        exponent is zero, omit cutoff
+      ic (mi,im)=0
+      ic (mi+1,im)=0
+      go to 5995
+c        store exponent
+  301 c(mm+1,im)=cc(3)
+c        compute constant factor for argument of exponential function
+      c(mm,im)=wnq/(cc(4)*cc(4))
+      mi=mi+2
+      mm=mm+2
+      go to 5995
+c
+c
+c
+c
+c        sharp cutoff in x and y
+c        ***********************
+c
+c
+  500 c(mm,im)=cc(4)*dwn
+      mi=mi+2
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        exponential form factor of xx and yy
+c        ************************************
+c
+c
+c        check exponent
+  600 if (cc(3).lt.0.d0) go to 9009
+      if (cc(3).gt.0.d0) go to 601
+c        exponent is zero, omit cutoff
+      ic (mi,im)=0
+      ic (mi+1,im)=0
+      go to 5995
+c        store exponent
+  601 c(mm+1,im)=cc(3)
+c        compute constant factor for argument of exponential function
+      c(mm,im)=wnq/(cc(4)*cc(4))
+      mi=mi+2
+      mm=mm+2
+      go to 5995
+c
+c
+c
+c
+c        function q^2 (momentum-transfer squared)
+c        ************
+c
+c
+ 1100 continue
+      c(mm,im)=cc(2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function k^2 (average-momentum squared)
+c        ************
+
+
+
+c
+c
+ 1200 continue
+      c(mm,im)=cc(2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,1
+c        *******************
+c
+c
+ 1300 c(mm,im)=rho*ga2/(2.d0*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,2
+c        *******************
+c
+c
+ 1400 c(mm,im)=ga2/(8.d0*pi2*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1500 c(mm,im)=ga2/(16.d0*pi2*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1600 c(mm,im)=ga2/(16.d0*pi2*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1700 c(mm,im)=ga2/(16.d0*pi2*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1800 c(mm,im)=ga2/(16.d0*pi2*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1900 c(mm,im)=ga2/(16.d0*pi2*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,4
+c        *******************
+c
+c
+ 2000 c(mm,im)=-ga*cdd*rho/(8.d0*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2100 c(mm,im)=ga*cdd/(16.d0*pi2*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2200 c(mm,im)=ga*cdd/(16.d0*pi2*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2300 c(mm,im)=-ga*cdd/(16.d0*pi2*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2400 c(mm,im)=ga*cdd/(16.d0*pi2*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c        function for vmed,6
+c        *******************
+c
+c
+ 2500 c(mm,im)=-3.d0*cee*rho/2.d0
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+
+c        function for vmed,7
+c        *******************
+c
+c
+cc 2600 c(mm,im)=ga2*ctt*rho/(8.d0*pi*fpi4)
+cc      mi=mi+1
+cc      mm=mm+1
+cc      go to 5995
+c
+c
+c        function for vmed,7
+c        *******************
+c
+c
+ 2600 c(mm,im)=ga2*ctt/(12.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c    function for vmed,8
+c    *******************
+ 2700  c(mm,im)= ga2*ctt*3.d0/(720.d0*pi2*pi*fpi4)
+       mi=mi+1
+       mm=mm+1
+       go to 5995
+c
+c
+c    function for vmed,8
+c    *******************
+ 2800  c(mm,im)= ga2*ctt/(720.d0*pi2*pi*fpi4)
+       mi=mi+1
+       mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c    function for vmed,9
+c    *******************
+ 2900  c(mm,im)= ga4*ctt*3.d0/(24.d0*pi2*pi*fpi4)
+       mi=mi+1
+       mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c    function for vmed,9
+c    *******************
+ 3000  c(mm,im)= ga4*ctt*(-3.d0)/(24.d0*pi2*pi*fpi4)
+       mi=mi+1
+       mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c    function for vmed,9
+c    *******************
+ 3100  c(mm,im)= ga4*ctt/(12.d0*pi2*pi*fpi4)
+       mi=mi+1
+       mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,10
+c        *******************
+c
+c
+ 3200 c(mm,im)=ga4*ctt/(80.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,10
+c        *******************
+c
+ 3300 c(mm,im)=ga4*ctt*(-3.d0)/(360.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,10
+c        *******************
+c
+ 3400 c(mm,im)=ga4*ctt*(-1.d0)/(360.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,10
+c        *******************
+c
+ 3500 c(mm,im)=ga4*ctt/(64.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,10
+c        *******************
+c
+ 3600 c(mm,im)=(ga4*ctt)/(64.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,10
+c        *******************
+c
+ 3700 c(mm,im)=ga4*ctt/(64.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,10
+c        *******************
+c
+ 3800 c(mm,im)=ga4*ctt/(64.d0*pi2*pi*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,11
+c        *******************
+c
+ 3900 c(mm,im)=ga2*(ctt-css)/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,12
+c        *******************
+c
+ 4000 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,12
+c        *******************
+c
+ 4100 c(mm,im)=(-9.d0)*ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,12
+c        *******************
+c
+ 4200 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c       function for vmed,12
+c        *******************
+c
+ 4300 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,12
+c        *******************
+c
+ 4400 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,12
+c        *******************
+c
+ 4500 c(mm,im)=9.d0*ga2*(css-ctt)/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,12
+c        *******************
+c
+ 4600 c(mm,im)=(-9.d0)*ga2*css/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,13
+c        *******************
+c
+ 4700 c(mm,im)=ga2/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,13
+c        *******************
+c
+ 4800 c(mm,im)=(3.d0)*ga2*(css-ctt)/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,13
+c        *******************
+c
+ 4900 c(mm,im)=ga2/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c       function for vmed,13
+c        *******************
+c
+ 5000 c(mm,im)=ga2/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,13
+c        *******************
+c
+ 5100 c(mm,im)=ga2/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,13
+c        *******************
+c
+ 5200 c(mm,im)=3.d0*ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,13
+c        *******************
+c
+ 5300 c(mm,im)=3.d0*ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,14
+c        *******************
+c
+ 5400 c(mm,im)=ga2*(css-ctt)/(48.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,15
+c        *******************
+c
+ 5500 c(mm,im)=3.d0*ga2*css/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,15
+c        *******************
+c
+ 5600 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,15
+c        *******************
+c
+ 5700 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c       function for vmed,15
+c        *******************
+c
+ 5800 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,15
+c        *******************
+c
+ 5900 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,15
+c        *******************
+c
+ 6000 c(mm,im)=3.d0*ga2*ctt/(8.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6100 c(mm,im)=ga2*(ctt-css)/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6200 c(mm,im)=ga2*css/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6300 c(mm,im)=ga2*css/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6400 c(mm,im)=ga2*css/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6500 c(mm,im)=ga2*css/(32.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6600 c(mm,im)=ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6700 c(mm,im)=ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6800 c(mm,im)=ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 6900 c(mm,im)=ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,16
+c        *******************
+c
+ 7000 c(mm,im)=ga2*ctt/(16.d0*pi2*wn*fpi2)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,17
+c        *******************
+c
+ 7100 c(mm,im)=ga2/(32.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,18
+c        *******************
+c
+ 7200 c(mm,im)=ga2/(16.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,18
+c        *******************
+c
+ 7300 c(mm,im)=ga2/(16.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,18
+c        *******************
+c
+ 7400 c(mm,im)=(-1.d0)*ga2/(16.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,18
+c        *******************
+c
+ 7500 c(mm,im)=ga2/(16.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,18
+c        *******************
+c
+ 7600 c(mm,im)=ga2/(16.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,19
+c        *******************
+c
+ 7700 c(mm,im)=ga2/(32.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,20
+c        *******************
+c
+ 7800 c(mm,im)=ga2/(32.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,20
+c        *******************
+c
+ 7900 c(mm,im)=ga2/(32.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,21
+c        *******************
+c
+ 8000 c(mm,im)=(-1.d0)*ga4/(16.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,22
+c        *******************
+c
+ 8100 c(mm,im)=ga4/(128.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,22
+c        *******************
+c
+ 8200 c(mm,im)=(-1.d0)*ga4/(128.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,22
+c        *******************
+c
+ 8300 c(mm,im)=(-1.d0)*ga4/(128.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,22
+c        *******************
+c
+ 8400 c(mm,im)=(-1.d0)*ga4/(128.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,23
+c        *******************
+c
+ 8500 c(mm,im)=3.d0*ga4/(128.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,23
+c        *******************
+c
+ 8600 c(mm,im)=3.d0*ga4/(128.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,23
+c        *******************
+c
+ 8700 c(mm,im)=3.d0*ga4/(128.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,23
+c        *******************
+c
+ 8800 c(mm,im)=ga4/(64.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,23
+c        *******************
+c
+ 8900 c(mm,im)=ga4/(64.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,24
+c        *******************
+c
+ 9000 c(mm,im)=ga4/(48.d0*pi2*wn*fpi4)
+      mi=mi+1
+      mm=mm+1
+      go to 5995
+c
+c
+c
+c
+c       function for vmed,25
+c        *******************
+c
+ 9100 c(mm,im)=ga4/(64.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,26
+c        *******************
+c
+ 9200 c(mm,im)=ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,26
+c        *******************
+c
+ 9300 c(mm,im)=2.d0*ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,26
+c        *******************
+c
+ 9400 c(mm,im)=(-3.d0)*ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,26
+c        *******************
+c
+ 9500 c(mm,im)=ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,26
+c        *******************
+c
+ 9600 c(mm,im)=(-1.d0)*ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,26
+c        *******************
+c
+ 9700 c(mm,im)=ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,27
+c        *******************
+c
+ 9800 c(mm,im)=ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,27
+c        *******************
+c
+ 9900 c(mm,im)=ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,27
+c        *******************
+c
+10000 c(mm,im)=(-3.d0)*ga4/(256.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,27
+c        *******************
+c
+10100 c(mm,im)=3.d0*ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,27
+c        *******************
+c
+10200 c(mm,im)=(-3.d0)*ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,27
+c        *******************
+c
+10300 c(mm,im)=3.d0*ga4/(128.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,28
+c        *******************
+c
+10400 c(mm,im)=(-1.d0)*ga2/(32.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,29
+c        *******************
+c
+10500 c(mm,im)=ga2/(32.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c       function for vmed,29
+c        *******************
+c
+10600 c(mm,im)=ga2/(32.d0*pi2*wn*fpi4)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c       function for vmed,30
+c        *******************
+c
+10700 c(mm,im)=rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+10800 c(mm,im)=rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+10900 c(mm,im)=rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+11000 c(mm,im)=rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+11100 c(mm,im)=(-1.d0)*rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+11200 c(mm,im)=(-1.d0)*rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+11300 c(mm,im)=rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+11400 c(mm,im)=rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,30
+c        *******************
+c
+11500 c(mm,im)=rho
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c       function for vmed,31
+c        *******************
+c
+11600 c(mm,im)=((-1.d0)*ga4)/((4.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c       function for vmed,32
+c        *******************
+c
+11700 c(mm,im)=(2.d0*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c       function for vmed,33
+c        *******************
+c
+11800 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,33
+c        *******************
+c
+11900 c(mm,im)=3.d0*ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,33
+c        *******************
+c
+12000 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,33
+c        *******************
+c
+12100 c(mm,im)=4.d0*ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,33
+c        *******************
+c
+12200 c(mm,im)=(-4.d0)*ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,33
+c        *******************
+c
+12300 c(mm,im)=(-4.d0)*ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,34
+c        *******************
+c
+12400 c(mm,im)=ga4/((4.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+12500 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+12600 c(mm,im)=(3.d0*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+12700 c(mm,im)=((-3.d0)*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+12800 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+12900 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+13000 c(mm,im)=(2.d0*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+13100 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+13200 c(mm,im)=((-3.d0)*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c       function for vmed,35
+c        *******************
+c
+13300 c(mm,im)=((-2.d0)*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,36
+c        *******************
+c
+13400 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+13500 c(mm,im)=(3.d0*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+13600 c(mm,im)=(3.d0*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+13700 c(mm,im)=(3.d0*ga4)/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+13800 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+13900 c(mm,im)=(-1.d0)*ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+14000 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+14100 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,37
+c        *******************
+c
+14200 c(mm,im)=ga4/((8.d0*pi*fpi2)**3)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,38
+c        *******************
+c
+14300 c(mm,im)=(-1.d0)*ga4/(96.d0*pi3*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,39
+c        *******************
+c
+14400 c(mm,im)=ga6/(96.d0*pi3*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,39
+c        *******************
+c
+14500 c(mm,im)=ga6/(96.d0*pi3*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c
+c       function for vmed,39
+c        *******************
+c
+14600 c(mm,im)=(-1.d0)*ga6/(96.d0*pi3*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,40
+c        *******************
+c
+14700 c(mm,im)=(3.d0)*ga4/(((4.d0*pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,41
+c        *******************
+c
+14800 c(mm,im)=(3.d0)*ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,41
+c        *******************
+c
+14900 c(mm,im)=ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,41
+c        *******************
+c
+15000 c(mm,im)=(-3.d0)*ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,41
+c        *******************
+c
+15100 c(mm,im)=(-1.d0)*ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+
+c
+c
+c       function for vmed,42
+c        *******************
+c
+15200 c(mm,im)=(3.d0)*ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,42
+c        *******************
+c
+15300 c(mm,im)=ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,43
+c        *******************
+c
+15400 c(mm,im)=ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,44
+c        *******************
+c
+15500 c(mm,im)=ga4/(64.d0*((pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,45
+c        *******************
+c
+15600 c(mm,im)=(3.d0*ga6)/(((4.d0*pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,46
+c        *******************
+c
+15700 c(mm,im)=(3.d0*ga6)/(((4.d0*pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c       function for vmed,47
+c        *******************
+c
+15800 c(mm,im)=ga6/(128.d0*(pi**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,48
+c        *******************
+c
+15900 c(mm,im)=ga6/(64.d0*(pi**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,48
+c        *******************
+c
+16000 c(mm,im)= -ga6/(64.d0*(pi**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,49
+c        *******************
+c
+16100 c(mm,im)=ga6/(64.d0*(pi**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c       function for vmed,50
+c        *******************
+c
+16200 c(mm,im)=(3.d0*ga6)/(((4.d0*pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,50
+c        *******************
+c
+16300 c(mm,im)=(-3.d0*ga6)/(((4.d0*pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,51
+c        *******************
+c
+16400 c(mm,im)=(3.d0*ga6)/(64.d0*(pi**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,52
+c        *******************
+c
+16500 c(mm,im)=ga6/(128.d0*(pi**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c       function for vmed,53
+c        *******************
+c
+16600 c(mm,im)=ga6/(((4.d0*pi)**4)*fpi6)
+        mi=mi+1
+        mm=mm+1
+       go to 5995
+c
+c
+c
+c
+c
+c
+c
+c
+c        end cut-offs and functions
+c        **************************
+c
+c        test dimensions
+ 5995 if (mi.gt.mice.or.mm.gt.mme) go to 9010
+c
+      go to 61
+
+
+c
+c
+c        conclusions
+c        -----------
+c        -----------
+c
+c
+c        write end
+ 7001 write (kwrite,10004) name
+      write (kwrite,10008)
+      write (kwrite,10008)
+c
+      imaa(inter)=imb
+      imea(inter)=ime
+      imb=ime+1
+c
+      return
+c
+c
+c
+c
+c        errors
+c        ------
+c        ------
+c
+c
+ 9807 write (kwrite,19000) name(1)
+19000 format (1h ////' error in effpar:  contribution  ',a4,'   does not
+     1 exist in this program.'/' execution terminated.'////)
+      go to 9999
+c
+c
+ 9001 write (kwrite,19001)
+19001 format (1h ////' error in effpar:too many contributions within a g
+     1roup with respect to'/' the given dimensions. execution terminated
+     2.'////)
+      go to 9999
+c
+c
+ 9002 write (kwrite,19002) cc(1)
+19002 format (1h ////' error in effpar: cut/fun typ',f10.4,'  does not e
+     1xist in this program.'/' execution terminated.'////)
+      go to 9999
+c
+c
+ 9003 write (kwrite,19003) iftyp
+19003 format (1h ////' error in effpar: factor typ has the non-permissib
+     1le value',i4,' .'/' execution terminated.'////)
+      go to 9999
+c
+c
+ 9004 write (kwrite,19004) cc(4)
+19004 format (1h ////' error in effpar: isospin has the non-permissible
+     1value',f10.4,'  .'/' execution terminated.'////)
+      go to 9999
+c
+c
+ 9005 write (kwrite,19005) cc(5)
+19005 format (1h ////' error in effpar: iprop/spe has the non-permissibl
+     1e value',f10.4,'  .'/' execution terminated.'////)
+      go to 9999
+c
+c
+ 9006 write (kwrite,19006) cc(2)
+19006 format (1h ////' error in effpar: the index for the propagator of
+     1the cut-off has the'/' non-permissible value',f10.4,'  . execution
+     2 terminated.'////)
+      go to 9999
+c
+c
+ 9009 write (kwrite,19009)
+19009 format (1h ////' error in effpar: the exponent of the cut-off is l
+     1ess than zero.'/' execution terminated.'////)
+      go to 9999
+c
+c
+ 9010 write (kwrite,19010)
+19010 format (1h ////' error in effpar: too many cut/fun parameters with
+     1 respect to the given'/' dimensions. execution terminated.'////)
+      go to 9999
+c
+c
+ 9011 write (kwrite,19011)
+19011 format (1h ////' error in effpar:  too many contr. with respect to
+     1 the dimensions given'/' to this program. execution terminated.'
+     2////)
+      go to 9999
+c
+c
+ 9999 stop
+      end
+      subroutine effstr (icase,max,mex)
+c
+c        effstr computes the structure of contributions to the nuclear force
+c
+c
+      implicit real*8 (a-h,o-z)
+c
+c
+c        common blocks
+c
+      common /crdwrt/ kread,kwrite,kpunch,kda(9)
+c
+      common /cstate/ j,heform,sing,trip,coup,endep,label
+      logical heform,sing,trip,coup,endep
+c
+c
+c        common block for all eff-subroutines
+c
+      common /ceff/ vj(32,270),c(20,270),fff,ff,f(52),aa(96),ai(19,120),
+     1                wnn(3),wdd(3),x,xx,y,yy,xy2,xxpyy,ex,ey,eem12,
+     2                gaa(3),fpia(3),ezz1(3),ezz2(3),ct(96),wt(96),
+     3                ic(20,270),ift(3),mint(3),maxt(3),nt,
+     4                mge,mgg(40,3),mggo(40,3),ima(120,40,3),
+     5                imaa(3),imea(3),ime,im,mc,m,mg,inter,ide,idde,
+     6                indc(2,270),indpar(3),indxy
+c
+c         specifications for this common block
+c
+      logical indc,indxy,indpar
+c
+c     further specifications
+c
+      dimension vv(32)
+      dimension tt(2,3)
+      logical index
+      logical indiso
+      data jj/-1/
+      data index/.false./
+      save
+c
+c
+c
+c
+      if (index) go to 50
+      index=.true.
+c
+c
+      tt(1,1)=1.d0
+      tt(2,1)=-3.d0
+c
+      do 1 ii=2,3
+      do 1 i=1,2
+    1 tt(i,ii)=1.d0
+c
+c
+c
+c
+c
+   50 do 1095 m=max,mex
+      im=ima(m,mg,inter)
+c
+c
+      if (mc.ne.1) go to 60
+c
+c
+c
+c
+c        call integrals
+c        --------------
+c
+c
+c
+c
+      call effai
+c
+c
+c
+c
+   60 if (mc.lt.1) mc=1
+c
+      if (c(mc,im).eq.0.d0) go to 1095
+c
+c
+c
+c
+c        nn-nn helicity amplitudes /combinations/
+c        ----------------------------------------
+c
+c
+c
+c
+c        basic structure (a factor of 2 is included in v5 and v6)
+c
+c
+      ive=6
+c
+      vv(1)=f(1)*ai(1,m)+f(2)*ai(2,m)
+      vv(2)=f(3)*ai(1,m)+f(4)*ai(3,m)
+      vv(3)=f(5)*ai(1,m)+f(6)*ai(2,m)
+      vv(4)=f(4)*ai(1,m)+f(3)*ai(3,m)
+      vv(5)=f(7)*ai(4,m)
+      vv(6)=f(8)*ai(4,m)
+c
+c
+      go to (1000,120,130,140),icase
+c
+c
+c        additional terms required for the tensor coupling
+c        of the rho-meson or for certain operators,
+c        like, the spin-orbit operator (`ls  ')
+c
+c
+  120 vv(1)=vv(1)+f(9)*ai(5,m)
+      vv(2)=vv(2)+f(10)*ai(2,m)+f(9)*ai(6,m)
+      vv(3)=vv(3)+f(10)*ai(5,m)
+      vv(4)=vv(4)+f(9)*ai(2,m)+f(10)*ai(6,m)
+         e1=f(11)*ai(7,m)
+      vv(5)=vv(5)+e1
+      vv(6)=vv(6)+e1
+      go to 1000
+c
+c
+c        additional terms in case of 2+ mesons
+c        not needed here
+c
+c
+  130 Continue
+      go to 1000
+c
+c
+c        additional terms needed for the sigma-l operator (`sl  ')
+c
+c
+  140 vv(1)=vv(1)+f(6)*ai(5,m)
+      vv(2)=vv(2)+f(1)*ai(5,m)+f(9)*ai(6,m)
+      vv(3)=vv(3)+f(1)*ai(11,m)
+      vv(4)=vv(4)+f(9)*ai(2,m)+f(1)*ai(12,m)
+      vv(5)=vv(5)+f(6)*ai(13,m)
+      vv(6)=vv(6)+f(6)*ai(13,m)
+c
+c
+c
+c
+ 1000 continue
+c
+c
+c
+c
+c        set certain cases to zero in case of inter=1
+c
+      if (j.ne.0) go to 1021
+      vv(2)=0.d0
+      vv(4)=0.d0
+      vv(5)=0.d0
+      vv(6)=0.d0
+c
+ 1021 if (.not.sing) vv(1)=0.d0
+      if (.not.trip) vv(2)=0.d0
+      if (coup) go to 1030
+      do 1025 iv=3,6
+ 1025 vv(iv)=0.d0
+c
+ 1030 continue
+c
+c
+c        transformation into lsj-formalism
+c 
+      if (j.eq.jj) go to 1035
+      jj=j
+      aj=dfloat(j)
+      aj1=dfloat(j+1)
+      d2j1=1.d0/dfloat(2*j+1)
+      arjj1=dsqrt(aj*aj1)
+c
+ 1035 v3=vv(3)
+      v4=vv(4)
+      v5=vv(5)
+      v6=vv(6)
+      v34=-arjj1*(v3-v4)
+      v56=arjj1*(v5+v6)
+      vv(3)=d2j1*(aj1*v3+aj*v4-v56)
+      vv(4)=d2j1*(aj*v3+aj1*v4+v56)
+      vv(5)=d2j1*(v34-aj1*v5+aj*v6)
+      vv(6)=d2j1*(v34+aj*v5-aj1*v6)
+c
+c
+c        possible different sign depending on the convention used
+      vv(5)=-vv(5)
+      vv(6)=-vv(6)
+c
+c
+c
+c
+c        multiply with factors
+c        ---------------------
+c
+c
+c
+c
+ 1040 is=mod(j,2)+1
+      it=mod(is,2)+1
+      indiso=indc(1,im)
+      cmc=c(mc,im)
+      fc=fff*ff*cmc
+      do 1045 iv=1,ive
+c
+c        multiply with coupling-constant and factors fff and ff
+c
+      vv(iv)=vv(iv)*fc
+c
+c        multiply with isospin factor
+c
+      if (.not.indiso) go to 1045
+      if (iv.eq.2) go to 1043
+      vv(iv)=vv(iv)*tt(is,inter)
+      go to 1045
+ 1043 vv(iv)=vv(iv)*tt(it,inter)
+c
+c     add up in case of several couplings for one meson-exchange
+c     and store
+ 1045 vj(iv,im)=vj(iv,im)+vv(iv)
+c
+c
+ 1095 continue
+c
+c
+      return
+      end
+      subroutine effai
+c
+c        effai integrates over theta
+c
+c
+      implicit real*8 (a-h,o-z)
+c
+      common /cpot/   v(6),xmev,ymev
+      common /cstate/ j,heform,sing,trip,coup,endep,label
+      logical heform,sing,trip,coup,endep
+c
+c
+c        common block for all eff-subroutines
+c
+      common /ceff/ vj(32,270),c(20,270),fff,ff,f(52),aa(96),ai(19,120),
+     1                wnn(3),wdd(3),x,xx,y,yy,xy2,xxpyy,ex,ey,eem12,
+     2                gaa(3),fpia(3),ezz1(3),ezz2(3),ct(96),wt(96),
+     3                ic(20,270),ift(3),mint(3),maxt(3),nt,
+     4                mge,mgg(40,3),mggo(40,3),ima(120,40,3),
+     5                imaa(3),imea(3),ime,im,mc,m,mg,inter,ide,idde,
+     6                indc(2,270),indpar(3),indxy
+c
+c         specifications for this common block
+c
+      logical indc,indxy,indpar
+c
+c
+c        further specifications
+      dimension gi(7)
+c
+      dimension pj(7,96)
+      real*4 axy2,aomq,am
+      logical indj
+      data ige/7/
+      data nnt/-1/,iinter/-1/,jj/-1/
+      save
+c
+c
+c
+c
+      if (inter.eq.iinter) go to 60
+      iinter=inter
+      min=mint(inter)
+      max=maxt(inter)
+c
+      igeint=7
+c
+      wn=wnn(inter)
+      dwn=1.d0/wn
+      wnq=wn*wn
+c
+c
+c
+c
+   60 if (j.eq.jj) go to 70
+      jj=j
+      indj=.false.
+c
+c
+      aj=dfloat(j)
+      aj1=dfloat(j+1)
+      dj1=1.d0/aj1
+      ajdj1=aj*dj1
+      aaj=dsqrt(ajdj1)
+c
+c
+      aj2=dfloat(j+2)
+      ajm1=dfloat(j-1)
+c
+c
+      ajj1=aj*aj1
+      ajj2=ajm1*aj2
+      ajjb=aj*ajm1
+c
+      aajj=0.d0
+      if (j.gt.1)
+     1aajj=aj/dsqrt(ajj1*ajj2)
+c
+      aaj1=aajj*ajm1
+      aaj2=aajj*aj1
+      aaj3=aajj*2.d0
+c
+      if (j.gt.1) go to 62
+      aajj=0.d0
+      go to 63
+   62 aajj=1.d0/(aj1*dsqrt(ajj2))
+c
+   63 aaj4=aajj*ajjb
+      aaj5=aajj*aj1*2.d0
+      aaj6=aajj*(ajj1+2.d0)
+      aaj7=aajj*ajj2
+c
+c
+c
+c
+c        find out appropriate number of gauss-points
+c        -------------------------------------------
+c
+c
+   70 c4=c(4,im)
+      if (c4.eq.0.d0) then
+      c4=(138.*dwn)**2
+      end if
+      iprsp=ic(1,im)
+c
+c
+c        compute am
+c
+      axy2=xy2
+      if (iprsp.ne.1) go to 91
+      aomq=eem12+c4
+      go to 92
+   91 aomq=xxpyy+c4
+c
+   92 am=axy2/aomq
+c
+c
+c        compute number of gausspoints (nt)
+c
+c
+      if (am.gt.0.999) go to 94
+c
+c
+      if (am.gt.0.85) am=am**(-alog(1.-am)-0.9)
+c
+c
+      nt=float(min)/(1.-am)+0.9
+c
+c
+      if (nt.gt.max) nt=max
+      go to 95
+c
+c
+   94 nt=max
+c
+c
+   95 nt=nt+j
+c
+c        compute nt, which is suitable for gset
+c
+      if (nt.le.16) go to 98
+      if (nt.gt.24) go to 96
+      nt=4*(nt/4)
+      go to 98
+   96 if (nt.gt.48) go to 97
+      nt=8*(nt/8)
+      go to 98
+   97 nt=16*(nt/16)
+      if (nt.gt.96) nt=96
+c
+   98 if (nt.eq.nnt.and.indj) go to 100
+c
+c
+c
+c
+c        call gauss-points
+c        -----------------
+c
+c
+c
+c
+      call gseteff (-1.d0,1.d0,nt,ct,wt)
+      nnt=nt
+c
+c
+c
+c
+c        call legendre-polynoms if necessary
+c        -----------------------------------
+c
+c
+c
+c
+      indj=.true.
+      do 99 i=1,nt
+      t=ct(i)
+      call legpeff (pj(1,i),pj(3,i),t,j)
+      pj(2,i)=pj(1,i)*t
+      pj(4,i)=pj(2,i)*t
+      pj(6,i)=pj(4,i)*t
+      pj(5,i)=pj(3,i)*t
+   99 pj(7,i)=pj(5,i)*t
+c
+c
+c
+c
+c        call integrand
+c        --------------
+c
+c
+c
+c
+  100 call effaa
+c
+c
+c
+c
+c        prepare for integration
+c
+c
+c
+c
+      do 2001 ig=1,igeint
+ 2001 gi(ig)=0.d0
+c
+c
+c
+c
+c        integration-loop of theta
+c        -------------------------
+c
+c
+c
+c
+      do 2005 i=1,nt
+      do 2005 ig=1,igeint
+ 2005 gi(ig)=gi(ig)+pj(ig,i)*aa(i)
+c
+c
+c
+      if (j.ne.0) go to 2010
+      gi(3)=0.d0
+      gi(5)=0.d0
+      gi(7)=0.d0
+c
+c
+c
+c
+c        combinations of integrals
+c        -------------------------
+c
+c
+c
+c
+ 2010 ai(1,m)=gi(1)
+c
+      ai(2,m)=gi(2)
+      ai(3,m)= ajdj1*gi(2)+dj1*gi(3)
+      gi23m  =gi(2)-gi(3)
+      ai(4,m)=aaj*gi23m
+c
+c
+      ai(5,m)=gi(4)
+      ai(6,m)= ajdj1*gi(4)+dj1*gi(5)
+      gi45m  =gi(4)-gi(5)
+      ai(7,m)=aaj*gi45m
+c
+c
+      ai( 8,m)= aaj1*gi(4)-aaj2*gi(1)+aaj3*gi(5)
+      aai1    = aaj4*gi(4)+aaj5*gi(1)-aaj6*gi(5)
+      aai2    = aaj7*gi23m
+      ai( 9,m)= aai2+aai1
+      ai(10,m)= aai2-aai1
+c
+c
+      ai(11,m)=gi(6)
+      ai(12,m)=ajdj1*gi(6)+dj1*gi(7)
+      ai(13,m)=aaj*(gi(6)-gi(7))
+c
+c
+      return
+      end
+      subroutine effaa
+c
+c        effaa computes propagators, cutoffs, and functions
+c
+c
+      implicit real*8 (a-h,o-z)
+c
+      common /crdwrt/ kread,kwrite,kpunch,kda(9)
+c
+      common /cstate/ j,heform,sing,trip,coup,endep,label
+      logical heform,sing,trip,coup,endep
+c
+c
+c        common block for all eff-subroutines
+c
+      common /ceff/ vj(32,270),c(20,270),fff,ff,f(52),aa(96),ai(19,120),
+     1                wnn(3),wdd(3),x,xx,y,yy,xy2,xxpyy,ex,ey,eem12,
+     2                gaa(3),fpia(3),ezz1(3),ezz2(3),ct(96),wt(96),
+     3                ic(20,270),ift(3),mint(3),maxt(3),nt,
+     4                mge,mgg(40,3),mggo(40,3),ima(120,40,3),
+     5                imaa(3),imea(3),ime,im,mc,m,mg,inter,ide,idde,
+     6                indc(2,270),indpar(3),indxy
+c
+c         specifications for this common block
+c
+      logical indc,indxy,indpar
+c
+      common /cpareff/ cb1,cb2,cb3,cb4,css,ctt,cdd,cee,qf
+c
+c
+      common /crrreff/ rrr
+c
+c
+c
+c        further specifications
+      dimension deltaq(96,7)
+      dimension ak(96),wk(96)
+      dimension gint0(96),gints(96),gintss(96)
+      dimension gint1(96),gint1s(96),gint2(96),gint3(96)
+      dimension xkint0(96),xkints(96),xkintss(96),xkintsss(96)
+      dimension xkint1(96),xkint1s(96),xkint1ss(96)
+      dimension xkint2(96),xkint2s(96),xkint3(96),xkint3s(96)
+      dimension bjint1(96),bjint2(96)
+      dimension bhint10(96),bhint11(96),bhint12(96),bhint13(96)
+      dimension bhint40(96),bhint41(96),bhint42(96),bhint43(96)
+      dimension bhint50(96),bhint51(96),bhint52(96),bhint53(96)
+      dimension biint10(96),biint11(96),biint12(96),biint13(96)
+      dimension biint14(96),biint15(96)
+      dimension biint20(96),biint21(96),biint22(96),biint23(96)
+      dimension biint24(96),biint25(96)
+      dimension biint30(96),biint31(96),biint32(96),biint33(96)
+      dimension biint34(96),biint35(96) 
+      dimension biint40(96),biint41(96),biint42(96),biint43(96)
+      dimension biint44(96),biint45(96)      
+      dimension biint50(96),biint51(96),biint52(96),biint53(96)
+      dimension biint54(96),biint55(96) 
+      dimension biint60(96),biint61(96),biint62(96),biint63(96)
+      dimension biint64(96),biint65(96) 
+      dimension biint70(96),biint71(96),biint72(96),biint73(96)
+      dimension biint74(96),biint75(96)
+      dimension biint80(96),biint81(96),biint82(96),biint83(96)
+      dimension biint84(96),biint85(96)
+      dimension bitil10(96),bitil11(96),bitil12(96),bitil13(96)
+      dimension bitil14(96),bitil15(96)      
+      dimension bitil40(96),bitil41(96),bitil42(96),bitil43(96)
+      dimension bitil44(96),bitil45(96)  
+      dimension csint(96)     
+      data iinter/-1/
+      data nnt/-1/
+      data cc4/-1.d0/
+      data pi/3.141592653589793d0/
+      save
+c
+c
+c
+c
+      if (inter.eq.iinter) go to 10
+      iinter=inter
+      ga2=gaa(inter)
+      ga4=ga2*ga2
+      fpi2=fpia(inter)
+      fpi4=fpi2*fpi2
+      pi2=pi*pi
+   10 continue
+c
+c
+c        prepare functions of x, y, and c4, but no angle
+c        -----------------------------------------------
+c
+c
+      c4=c(4,im)
+      if (indxy.and.cc4.eq.c4) go to 30
+      indxy=.true.
+      cc4=c4
+      rootc4=dsqrt(c4)
+      yyoff=0.5d0*(xx+yy)
+      yoff=dsqrt(yyoff)
+      qfq=qf*qf
+      qf3=qfq*qf
+      
+c
+c
+c           Big Gammas
+c     **********************
+
+      gamma0=qf-rootc4*(datan((qf+yoff)/rootc4)
+     1      +datan((qf-yoff)/rootc4))
+     2      +(c4+qfq-yyoff)/(4.d0*yoff)*
+     3       dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2))
+      gamma1=qf/(4.d0*yyoff)*(c4+qfq+yyoff)-gamma0
+     1      -1.d0/(16.d0*yyoff*yoff)*(c4+(qf+yoff)**2)*
+     2       (c4+(qf-yoff)**2)*
+     3       dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2))
+      gamma2=qf3/9.d0+1.d0/6.d0*(qfq-c4-yyoff)*gamma0
+     1      +1.d0/6.d0*(c4+qfq-yyoff)*gamma1
+      gamma3=qf3/(3.d0*yyoff)
+     2      -(c4+qfq+yyoff)/(2.d0*yyoff)*gamma0
+     3      -(c4+qfq+3.d0*yyoff)/(2.d0*yyoff)*gamma1
+c
+      gam013=gamma0+2.d0*gamma1+gamma3
+
+      gamma4=(c4/3.d0)*gamma0+((qf/64.d0)*
+     1      (((5.d0*yyoff)/3.d0)-(3.d0*c4)-((31.d0*qfq)/9.d0)
+     2      +((1.d0/(3.d0*yyoff))*((3.d0*qfq*qfq)
+     3      -(14.d0*qfq*c4)-(17.d0*c4*c4)))
+     4      -(((qfq+c4)**3)/(yyoff*yyoff))))
+     5      +((1.d0/(768.d0*yyoff*yoff*yyoff))*(c4+(qf+yoff)**2)
+     6      *(c4+(qf-yoff)**2)*((3.d0*((qfq+c4)**2))
+     7      +((2.d0*yyoff)*(qfq+(7.d0*c4)))-(5.d0*yyoff*yyoff))*
+     8      dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+     
+
+
+       gamma5=-gamma0+((qf/64.d0)*(29.d0+((5.d0/(yyoff*yyoff*yyoff))
+     1        *((qfq+c4)**3))+(((25.d0*qfq)+(141.d0*c4))/(3.d0*yyoff))
+     2        +((1.d0/(3.d0*yyoff*yyoff))*((17.d0*qf3*qf)
+     3        +(86.d0*qfq*c4)+(69.d0*c4*c4))))) +
+     4        (-(1.d0/(256.d0*yyoff*yyoff*yyoff*yoff))
+     5        *(c4+((qf+yoff)**2))*(c4+((qf-yoff)**2))
+     6        *((5.d0*((qfq+c4)**2))+(2.d0*yyoff*((7.d0*qfq)+(9.d0*c4)))
+     7        +(29.d0*yyoff*yyoff))*
+     8        dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+
+
+*        write(*,*) gamma0,gamma1,gamma2,gamma3,gamma4,gamma5
+
+
+c               Small Gammas(derivaties of big gammas)
+c           ***********************************************
+       sgam0=(1.d0/(2.d0*rootc4))*(datan((qf+yoff)/rootc4)
+     1      +datan((qf-yoff)/rootc4))-((1.d0/(4.d0*yoff))*
+     2       dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+       sgam1=(-sgam0)-(qf/(2.d0*yyoff))+(((yyoff+qfq+c4)
+     1       /(8.d0*yyoff*yoff))*
+     2       dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+       sgam2=((qf/(8.d0*yyoff))*((3.d0*yyoff)-qfq-c4))-(c4*sgam0)
+     1       +((1.d0/(32.d0*yoff*yyoff))*(((yyoff+qfq+c4)**2)
+     2       -(4.d0*yyoff*(yyoff+c4)))*
+     3        dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+       sgam3=sgam0+((qf/(8.d0*yyoff*yyoff))*((7.d0*yyoff)+(3.d0*qfq)+
+     1      (3.d0*c4)))-((1.d0/(32.d0*yyoff*yyoff*yoff))*((3.d0*
+     2      ((qfq+c4)**2))+(2.d0*yyoff*(((3.d0*qfq)+(5.d0*c4))**2))
+     3      +(7.d0*yyoff*yyoff))*
+     4        dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+       sgam4=(c4*sgam0)+((qf/(16.d0*yyoff*yyoff))*(((qfq+c4)**2)
+     1       +(((4.d0*yyoff)/3.d0)*(qfq+(3.d0*c4)))-(5.d0*yyoff*yyoff)))
+     2       +(((yyoff-qfq-c4)/(64.d0*yyoff*yoff*yyoff))
+     3       *((5.d0*yyoff*yyoff)+((2.d0*yyoff)*(qfq+(3.d0*c4)))
+     4       +((qfq+c4)**2))*dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+       sgam5=(-sgam0)-((qf/yyoff)*(((5.d0/(16.d0*yyoff*yyoff))
+     1       *((qfq+c4)**2))+(19.d0/16.d0)+(((2.d0*qfq)+(3.d0*c4))
+     2       /(3.d0*yyoff))))+((1.d0/(64.d0*yyoff*yyoff*yyoff*yoff))
+     3       *((5.d0*yyoff*yyoff*((3.d0*qfq)+(7.d0*c4)))
+     4       +(19.d0*yyoff*yyoff*yyoff)+(3.d0*yyoff*(qfq+c4)
+     5       *((3.d0*qfq)+(7.d0*c4)))+(5.d0*((qfq+c4)**3)))*
+     6        dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2)))
+       sgamss=(((yyoff*yyoff)+(5.d0*c4*c4)-(10.d0*yyoff*c4))*sgam0)
+     1        +(4.d0*qf*(yyoff+(qfq/6.d0)-c4))
+     2        +(((c4*c4)-(yyoff*yyoff))/yoff)*
+     3        dlog((c4+(qf+yoff)**2)/(c4+(qf-yoff)**2))
+
+
+cc      write(*,*) qf, yoff,sgam0,sgam1,sgam2,sgam3,sgam4,sgam5,sgamss
+
+
+c       Adding H-functions, H_(0-3)
+c      ***********************************
+     
+       rc4=dsqrt(c4)
+       c4r3=c4*rc4
+       c4r4=c4*c4
+       c4r6=c4*c4r4
+       pkp=yoff+qf
+       pkp2=pkp**2
+       pkp4=pkp**4
+       pkm=yoff-qf
+       pkm2=pkm**2
+       pkm4=pkm**4
+       qf4=qfq**2
+       qf5=qf*qf4
+       qf6=qf*qf5
+       qf7=qf5*qfq
+       y3off=yyoff*yoff
+       y4off=yyoff**2
+       y5off=y4off*yoff
+       q2p10c4=qfq+(10.d0*c4)
+       q2p2c4=qfq+(2.d0*c4)
+       q2mc4=(13.d0*qfq)-(3.d0*c4)
+       q4mp4=(15.d0*qf4)-y4off
+       p4mq4=y4off-(15.d0*qf4)
+       c4mp2=(6.d0*c4)-(19.d0*yyoff)
+       p2mq2=(5.d0*yyoff)-qfq
+       qp2mpq4=(6.d0*qfq*yyoff)-(5.d0*y4off)-qf4
+
+
+
+       haitch0=(qf*rc4*(yyoff+(21.d0*qfq)-(19.d0*c4)))
+     1   +((c4r3/(4.d0*yoff))*((35.d0*yyoff)-(35.d0*qfq)-(44.d0*c4)))*
+     2    (dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     3   +(((qf3/yoff)*q2p10c4)-(5.d0*yyoff*c4)+(5.d0*qf3*yoff)
+     4   +((5.d0/2.d0)*yyoff*qfq)+(15.d0*c4*q2p2c4)
+     5   +((1.d0/4.d0)*q4mp4))* (datan(pkp/(2.d0*rc4)))
+     6   +(((qf3/yoff)*q2p10c4)+(5.d0*yyoff*c4)+(5.d0*qf3*yoff)
+     7   -((5.d0/2.d0)*yyoff*qfq)-(15.d0*c4*q2p2c4)
+     8   +((1.d0/4.d0)*p4mq4))* (datan(pkm/(2.d0*rc4)))
+
+       haitch1=(qf*rc4*(yyoff-(9.d0*qfq)+(36.d0*c4)))
+     1   +(((2.d0*c4r3)/yoff)*((5.d0*qfq)+(12.d0*c4)-(5.d0*yyoff)))*
+     2    (dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     3   +((qf5/yoff)-(60.d0*c4r4)+(5.d0*qf3*yoff)
+     4   +((5.d0/2.d0)*yyoff*qfq)+((1.d0/4.d0)*q4mp4))*
+     5    (datan(pkp/(2.d0*rc4)))
+     6   +((qf5/yoff)+(60.d0*c4r4)+(5.d0*qf3*yoff)
+     7   -((5.d0/2.d0)*yyoff*qfq)+((1.d0/4.d0)*p4mq4))*
+     8    (datan(pkm/(2.d0*rc4)))
+
+
+       haitch2=(((qf*rc4)/(7.d0*yyoff))*(((19.d0*qf4)/10.d0)
+     1  +(((16.d0*qfq)/15.d0)*c4mp2)+(8.d0*c4r4)+(68.d0*yyoff*c4)
+     2  +(y4off/2.d0))) +((rc4/(8.d0*y3off))*(((-64.d0/7.d0)*c4r6)
+     3  +((48.d0/5.d0)*c4r4*p2mq2)+(4.d0*c4*qp2mpq4)+((yyoff-qfq)**3)))*
+     4   (dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     5  +(((2.d0*qf7)/(35.d0*y3off))+(2.d0*qf3*yoff)
+     6  +((6.d0/5.d0)*yyoff*qfq)+ qf4-(y4off/7.d0)-(16.d0*c4r4))
+     7  *(datan(pkp/(2.d0*rc4)))+(((2.d0*qf7)/(35.d0*y3off))
+     8  +(2.d0*qf3*yoff)-((6.d0/5.d0)*yyoff*qfq)-qf4
+     9  +(y4off/7.d0)+(16.d0*c4r4))*(datan(pkm/(2.d0*rc4)))
+
+
+       haitch3=(((qf*rc4)/(140.d0*y4off))*((41.d0*y4off)
+     1 +(8.d0*yyoff*q2mc4)-(3.d0*((19.d0*qf4)+(64.d0*qfq*c4)
+     2 +(80.d0*c4r4)))))+((rc4/y5off)*(((c4/4.d0)*((3.d0*qf4)
+     3 -(2.d0*qfq*yyoff)-(y4off)))+((3.d0/5.d0)*c4r4*((3.d0*qfq)+yyoff))
+     4 +((12.d0/7.d0)*c4r6)+((3.d0/16.d0)*((qfq-yyoff)**3)))*
+     5 (dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2))))
+     6 +((pkp4/(35.d0*y5off))*((4.d0*y3off)-(16.d0*qf*yyoff)
+     7 +(12.d0*qfq*yoff)-(3.d0*qf3))*(datan(pkp/(2.d0*rc4))))
+     8 -((pkm4/(35.d0*y5off))*((4.d0*y3off)+(16.d0*qf*yyoff)
+     9 +(12.d0*qfq*yoff)+(3.d0*qf3))*(datan(pkm/(2.d0*rc4))))
+
+
+     
+     
+c     Adding E-values
+c    ****************
+       elam=400
+       sme0= -3.241
+       bige0= sme0/(fpi4*elam)
+       sme1= -2.698
+       bige1= sme1/(fpi4*(elam**3))
+       sme2= 2.418
+       bige2= sme2/(fpi4*(elam**3))
+       sme3= 1.270
+       bige3= sme3/(fpi4*(elam**3))
+       sme4= -1.271
+       bige4= sme4/(fpi4*(elam**3))
+       sme5= -0.288
+       bige5= sme5/(fpi4*(elam**3))
+       sme6= -0.687
+       bige6= sme6/(fpi4*(elam**3))
+       sme7= 3.883
+       bige7= sme7/(fpi4*(elam**3))
+       sme8= 0.495
+       bige8= sme8/(fpi4*(elam**3))    
+       sme9= -0.070
+       bige9= sme9/(fpi4*(elam**3))
+       sme10= -0.490
+       bige10= sme10/(fpi4*(elam**3))
+
+*       write(*,*) elam, sme0, bige0, sme1, bige1, sme2, bige2, sme3, 
+*     1  bige3, sme4, bige4, sme5, bige5, sme6, bige6, sme7, bige7, sme8,
+*     2  bige8, sme9, bige9, sme10, bige10
+
+
+c       Adding S-functions, S_(0-4)
+c      ***********************************
+       bigs0=(((y4off/105.d0)+((2.d0*yyoff/15.d0)*(4.d0*c4-qfq))
+     1     -((qf3/3.d0)*(yoff+qf))-(2.d0*qfq*c4)-(4.d0*c4r4)
+     2     -((qf3/(3.d0*yoff))*(((2.d0*qfq)/5.d0)+(5.d0*c4)))
+     3     +((qf5/(5.d0*y3off))*((qfq/21.d0)+c4)))
+     4     *datan((yoff+qf)/(2.d0*rc4)))
+     5     +(((((2.d0*yyoff)/15.d0)*(qfq-(4.d0*c4)))-(y4off/105.d0)
+     6     +((qf3/3.d0)*(qf-yoff))+(2.d0*qfq*c4)+(4.d0*c4r4)
+     7     -((qf3/(3.d0*yoff))*(((2.d0*qfq)/5.d0)+(5.d0*c4)))
+     8     +((qf5/(5.d0*y3off))*((qfq/21.d0)+c4)))
+     9     *datan((yoff-qf)/(2.d0*rc4)))
+     1     +(c4r3*(((17.d0/yoff)*((c4/15.d0)+(qfq/12.d0)))
+     2     -((29.d0*yoff)/24.d0)-((1.d0/y3off)*(((5.d0*qf4)/24.d0)
+     3     +((qfq*c4)/5.d0)+((2.d0*c4r4)/35.d0))))
+     4     *dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     5     +(((qf*rc4)/210.d0)*((599.d0*c4)-(316.d0*qfq)-(8.d0*yyoff)
+     6     +(((12.d0*c4r4)+(39.d0*qfq*c4)-(8.d0*qf4))/yyoff)))
+
+     
+       bigs1=((((qf3*yoff)/3.d0)-((qf5/(5.d0*y3off))*((qfq/7.d0)
+     1     +(2.d0*c4)))+(((2.d0*qf3)/(3.d0*yoff))*(((2.d0*qfq)/5.d0)
+     2     +c4))+(qf4/2.d0)+((yyoff/15.d0)*(qfq+4.d0*c4))
+     3     +(y4off/210.d0))*datan((yoff+qf)/(2.d0*rc4)))
+     4     +((((qf3*yoff)/3.d0)-((qf5/(5.d0*y3off))*((qfq/7.d0)
+     5     +(2.d0*c4)))+(((2.d0*qf3)/(3.d0*yoff))*(((2.d0*qfq)/5.d0)
+     6     +c4))-(qf4/2.d0)-((yyoff/15.d0)*(qfq+4.d0*c4))
+     7     -(y4off/210.d0))*datan((yoff-qf)/(2.d0*rc4)))
+     8     +((c4r3/y3off)*((qf4/4.d0)-(((2.d0*c4)/5.d0)
+     9     *(qfq+((18.d0*c4)/7.d0)))+((yyoff/3.d0)*((qfq/2.d0)
+     1     -((14.d0*c4)/5.d0)))-((5.d0*y4off)/12.d0))
+     2     *dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     3     +(((qf*rc4)/35.d0)*(((110.d0*qfq+71.d0*c4-2.d0*yyoff)/3.d0)
+     4     +(((4.d0*qf4)+(5.d0*qfq*c4)+(36.d0*c4r4))/yyoff)))
+
+
+
+       bigs2=((((qf3*yoff)-((qf5/(5.d0*y3off))*((qfq/7.d0)+8.d0*c4))
+     1     +(((2.d0*qf3)/yoff)*((qfq/5.d0)+4.d0*c4))+qf4
+     2     +(8.d0*c4*(qfq+4.d0*c4))+(((2.d0*yyoff)/5.d0)*(qfq-4.d0*c4))
+     3     -(y4off/35.d0))/3.d0)*datan((yoff+qf)/(2.d0*rc4)))
+     4     +((((qf3*yoff)-((qf5/(5.d0*y3off))*((qfq/7.d0)+8.d0*c4))
+     5     +(((2.d0*qf3)/yoff)*((qfq/5.d0)+4.d0*c4))-qf4
+     6     -(8.d0*c4*(qfq+4.d0*c4))+(((2.d0*yyoff)/5.d0)*(4.d0*c4-qfq))
+     7     +(y4off/35.d0))/3.d0)*datan((yoff-qf)/(2.d0*rc4)))
+     8     +((rc4/3.d0)*(((yoff/8.d0)*(yyoff-3.d0*qfq))+(7.d0*c4*yoff)
+     9     +((((3.d0*qf4)/8.d0)-(8.d0*qfq*c4)-((62.d0*c4*c4)/5.d0))
+     1     /yoff)+(((qf4*c4)-(qf6/8.d0)-((2.d0*qfq*c4r4)/5.d0)
+     2     -((64.d0*c4r6)/35.d0))/y3off))
+     3     *dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     4     +(((qf*rc4)/105.d0)*(((1244.d0*qfq)/3.d0)-(702.d0*c4)
+     5     +((43.d0*qf4)/(2.d0*yyoff))+(((2.d0*c4)/yyoff)
+     6     *(32.d0*c4-qfq))-((27.d0*yyoff)/2.d0)))
+       
+       bigs3=((((2.d0*c4-qfq)/15.d0)+(yyoff/105.d0)-(qf3/(12.d0*yoff))
+     1     +((qf3/(3.d0*y3off))*((qfq/10.d0)+c4))-((qf5/(5.d0*y5off))
+     2     *((qfq/28.d0)+c4)))*datan((yoff+qf)/(2.d0*rc4)))
+     3     +((((qfq-2.d0*c4)/15.d0)-(yyoff/105.d0)-(qf3/(12.d0*yoff))
+     4     +((qf3/(3.d0*y3off))*((qfq/10.d0)+c4))-((qf5/(5.d0*y5off))
+     5     *((qfq/28.d0)+c4)))*datan((yoff-qf)/(2.d0*rc4)))
+     6     +(((c4r3/y5off)*((qf4/4.d0)+(((2.d0*c4)/5.d0)*(qfq+((6.d0*c4)
+     7     /7.d0)))+((yyoff/3.d0)*(((2.d0*c4)/5.d0)-(qfq/2.d0)))
+     8     -(y4off/12.d0)))*dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     9     +(((qf*rc4)/(35.d0*yyoff))*(((qf4-11.d0*qfq*c4-12.d0*c4r4)
+     1     /yyoff)-((11.d0*qfq+5.d0*c4+4.d0*yyoff)/3.d0)))
+       
+       bigs4=(((((qfq-4.d0*c4)/5.d0)-(yyoff/35.d0)+(qf3/(4.d0*yoff))
+     1     -((qf3/y3off)*((qfq/10.d0)+2.d0*c4))+(((3.d0*qf5)
+     2     /(5.d0*y5off))*((qfq/28.d0)+2.d0*c4)))/3.d0)
+     3     *datan((yoff+qf)/(2.d0*rc4)))
+     4     +(((((4.d0*c4-qfq)/5.d0)+(yyoff/35.d0)+(qf3/(4.d0*yoff))
+     5     -((qf3/y3off)*((qfq/10.d0)+2.d0*c4))+(((3.d0*qf5)
+     6     /(5.d0*y5off))*((qfq/28.d0)+2.d0*c4)))/3.d0)
+     7     *datan((yoff-qf)/(2.d0*rc4)))
+     8     +((rc4/4.d0)*(((qf4/y5off)*((qfq/8.d0)-c4))+(((2.d0*c4r4)
+     9     /(5.d0*y5off))*(qfq+((32.d0*c4)/7.d0)))-((3.d0*qf4)
+     1     /(8.d0*y3off))+(((2.d0*c4)/(3.d0*y3off))*(qfq+(c4/5.d0)))
+     2     +((3.d0*qfq)/(8.d0*yoff))+(c4/(3.d0*yoff))-(yoff/8.d0))
+     3     *dlog(((4.d0*c4)+pkp2)/((4.d0*c4)+pkm2)))
+     4     +(((qf*rc4)/35.d0)*((137.d0/24.d0)+((((qfq*c4)/2.d0)
+     5     -(16.d0*c4r4)-((43.d0*qf4)/8.d0))/y4off)
+     6     +((92.d0*qfq+17.d0*c4)/(6.d0*yyoff))))
+       
+
+c      write(*,*) qf, yoff, bigs0, bigs1, bigs2, bigs3, bigs4
+
+       go to 31
+c
+c
+c        prepare functions of x, y, and angle
+c        -----------------------------------
+c
+c
+   30 if (nt.eq.nnt) go to 50
+   31 continue
+c
+      nqf=32 
+      call gseteff (0.d0,qf,nqf,ak,wk)
+c
+      nnt=nt
+      do 45 i=1,nt
+      xy2t=xy2*ct(i)
+c
+c        function  -q^2 (- momentum-transfer-squared)
+c        --------------
+c        retardation ignored
+      deltaq(i,1)=xy2t-xxpyy
+c
+c        retardation incorporated
+      deltaq(i,2)=xy2t-eem12
+c
+c        function  +k^2 (average-momentum squared)
+c        --------------
+      deltaq(i,3)=(xy2t+xxpyy)*0.25d0
+c
+c        function  q^4 (momentum-transfer to the power of 4)
+c        -------------
+      deltaq(i,4)=deltaq(i,1)*deltaq(i,1)
+c
+c        function  k^4 (average-momentum to the power of 4)
+c        -------------
+      deltaq(i,5)=deltaq(i,3)*deltaq(i,3)
+c
+c        function  +q^2*k^2
+c        -----------------
+      deltaq(i,6)=-deltaq(i,1)*deltaq(i,3)
+c
+c        function  (\vec q x \vec k)^2
+c        -----------------------------
+      deltaq(i,7)=xx*yy*(1.d0-ct(i)*ct(i))
+c
+c
+c        calculate the G- & K- integrals
+c        -------------------------
+c        -------------------------
+c
+      gint0(i)=0.d0
+      gints(i)=0.d0
+      gintss(i)=0.d0
+
+      xkint0(i)=0.d0
+      xkints(i)=0.d0
+      xkintss(i)=0.d0
+      xkintsss(i)=0.d0
+
+
+c
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+c
+      do 35 ik=1,nqf
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak3*ak2
+      ak7=ak5*ak2
+      ap=(c4+(ak1+yoff)**2)*(c4+(ak1-yoff)**2)
+      ap1=dsqrt(ap)
+      ap2=dsqrt(ap+aqq*ak2)
+      ap4=ap+(aqq*ak2)
+      aint=1.d0/ap2*dlog((aq*ak1+ap2)/ap1)
+c
+      gint0(i)=gint0(i)+ak1*aint*wk(ik)
+      gints(i)=gints(i)+ak3*aint*wk(ik)
+      gintss(i)=gintss(i)+ak5*aint*wk(ik)
+
+      xkint0(i)=xkint0(i)+ak1*((c4+ak2+yyoff)/(ap4))*
+     1          ((ak1/ap)+((1.d0/aq)*aint))*wk(ik)
+      xkints(i)=xkints(i)+ak3*((c4+ak2+yyoff)/(ap4))*
+     1          ((ak1/ap)+((1.d0/aq)*aint))*wk(ik)
+      xkintss(i)=xkintss(i)+ak5*((c4+ak2+yyoff)/(ap4))*
+     1          ((ak1/ap)+((1.d0/aq)*aint))*wk(ik)
+       xkintsss(i)=xkintsss(i)+ak7*((c4+ak2+yyoff)/(ap4))*
+     1             ((ak1/ap)+((1.d0/aq)*aint))*wk(ik)
+
+   35 continue
+c
+      gint0(i)=gint0(i)*2.d0/aq
+      gints(i)=gints(i)*2.d0/aq
+      gintss(i)=gintss(i)*2.d0/aq
+
+       xkint0(i)=xkint0(i)*2.d0
+       xkints(i)=xkints(i)*2.d0
+       xkintss(i)=xkintss(i)*2.d0
+       xkintsss(i)=xkintsss(i)*2.d0
+
+
+
+c
+      c4yy=c4+yyoff
+      denom=4.d0*yyoff-aqq
+c
+      gint1(i)=(gamma0-c4yy*gint0(i)-gints(i))/denom
+      gint1s(i)=(3.d0*gamma2+yyoff*gamma3-c4yy*gints(i)-gintss(i))
+     1          /denom
+      gint2(i)=c4yy*gint1(i)+gints(i)+gint1s(i)
+      gint3(i)=(0.5d0*gamma1-2.d0*c4yy*gint1(i)-2.d0*gint1s(i)-gints(i))
+     1         /denom
+
+
+
+       xkint1(i)=(sgam0+gint0(i)-c4yy*xkint0(i)-xkints(i))/denom
+       xkint1s(i)=((3.d0*sgam2)+(yyoff*sgam3)+gints(i)-c4yy*xkints(i)
+     1            -xkintss(i))/denom
+       xkint1ss(i)=(gintss(i)-(c4yy*xkintss(i))-xkintsss(i)+sgamss)
+     1             /denom
+       xkint2(i)=c4yy*xkint1(i)-gint1(i)+xkints(i)+xkint1s(i)
+       xkint2s(i)=c4yy*xkint1s(i)-gint1s(i)+xkintss(i)+xkint1ss(i)
+       xkint3(i)=((0.5d0*sgam1)-(2.d0*c4yy*xkint1(i))+(2.d0*gint1(i))
+     1            -xkints(i)-(2.d0*xkint1s(i)))/denom
+       xkint3s(i)=(0.5d0*((5.d0*sgam4)+(yyoff*sgam5))
+     1            -(2.d0*c4yy*xkint1s(i)) +(2.d0*gint1s(i))
+     2            -xkintss(i)-(2.d0*xkint1ss(i)))/denom
+
+
+c       write(587,*) gint0(i), gints(i), gintss(i), 
+c     1              gint1(i), gint1s(i), gint2(i), gint3(i) 
+
+c       write(787,*) xkint0(i), xkints(i), xkintss(i),xkintsss(i)
+      
+c       write(787,*) xkint1(i), xkint1s(i), xkint2(i), xkint3(i)
+c       write(787,*) xkint1ss(i), xkint2s(i), xkint3s(i)
+
+   45 continue
+
+c        prepare functions of x, y, and angle
+c        -----------------------------------
+c
+c
+ccc   30 if (nt.eq.nnt) go to 50
+ccc  31 continue
+c
+      nqf=32 
+      call gseteff (yoff-qf,yoff+qf,nqf,ak,wk)
+c
+      nnt=nt
+      do 415 i=1,nt
+      xy2t=xy2*ct(i)
+c
+c        function  -q^2 (- momentum-transfer-squared)
+c        --------------
+c        retardation ignored
+      deltaq(i,1)=xy2t-xxpyy
+c
+c        retardation incorporated
+      deltaq(i,2)=xy2t-eem12
+c
+c        function  +k^2 (average-momentum squared)
+c        --------------
+      deltaq(i,3)=(xy2t+xxpyy)*0.25d0
+c
+c        function  q^4 (momentum-transfer to the power of 4)
+c        -------------
+      deltaq(i,4)=deltaq(i,1)*deltaq(i,1)
+c 
+c        function  k^4 (average-momentum to the power of 4)
+c        -------------
+      deltaq(i,5)=deltaq(i,3)*deltaq(i,3)
+c
+c        function  +q^2*k^2
+c        -----------------
+      deltaq(i,6)=-deltaq(i,1)*deltaq(i,3)
+c
+c        function  (\vec q x \vec k)^2
+c        -----------------------------
+      deltaq(i,7)=xx*yy*(1.d0-ct(i)*ct(i))
+c
+c
+c
+c
+c        calculate the J-, H-, I- & Itilda- integrals
+c        ----------------------------------------------
+c        ----------------------------------------------
+
+c     J-intergrals
+c    ****************
+      bjint1(i)=0.d0
+
+      bjint2(i)=0.d0
+
+c     H-intergrals
+c    ****************
+      bhint10(i)=0.d0
+      bhint11(i)=0.d0
+      bhint12(i)=0.d0
+      bhint13(i)=0.d0
+      
+      bhint40(i)=0.d0
+      bhint41(i)=0.d0
+      bhint42(i)=0.d0
+      bhint43(i)=0.d0
+      
+      bhint50(i)=0.d0
+      bhint51(i)=0.d0
+      bhint52(i)=0.d0
+      bhint53(i)=0.d0
+ 
+ 
+c     I-intergrals
+c    ****************
+      biint10(i)=0.d0
+      biint11(i)=0.d0
+      biint12(i)=0.d0
+      biint13(i)=0.d0
+      biint14(i)=0.d0
+      biint15(i)=0.d0
+      
+      biint20(i)=0.d0
+      biint21(i)=0.d0
+      biint22(i)=0.d0
+      biint23(i)=0.d0
+      biint24(i)=0.d0
+      biint25(i)=0.d0
+      
+      biint30(i)=0.d0
+      biint31(i)=0.d0
+      biint32(i)=0.d0
+      biint33(i)=0.d0
+      biint34(i)=0.d0
+      biint35(i)=0.d0
+
+      biint40(i)=0.d0
+      biint41(i)=0.d0
+      biint42(i)=0.d0
+      biint43(i)=0.d0
+      biint44(i)=0.d0
+      biint45(i)=0.d0
+      
+      biint50(i)=0.d0
+      biint51(i)=0.d0
+      biint52(i)=0.d0
+      biint53(i)=0.d0
+      biint54(i)=0.d0
+      biint55(i)=0.d0
+      
+      biint60(i)=0.d0
+      biint61(i)=0.d0
+      biint62(i)=0.d0
+      biint63(i)=0.d0
+      biint64(i)=0.d0
+      biint65(i)=0.d0
+
+      biint70(i)=0.d0
+      biint71(i)=0.d0
+      biint72(i)=0.d0
+      biint73(i)=0.d0
+      biint74(i)=0.d0
+      biint75(i)=0.d0
+      
+      biint80(i)=0.d0
+      biint81(i)=0.d0
+      biint82(i)=0.d0
+      biint83(i)=0.d0
+      biint84(i)=0.d0
+      biint85(i)=0.d0
+
+
+c     Itilda-intergrals
+c    *******************
+       
+       bitil10(i)=0.d0
+       bitil11(i)=0.d0
+       bitil12(i)=0.d0
+       bitil13(i)=0.d0
+       bitil14(i)=0.d0
+       bitil15(i)=0.d0
+       
+       bitil40(i)=0.d0
+       bitil41(i)=0.d0
+       bitil42(i)=0.d0
+       bitil43(i)=0.d0
+       bitil44(i)=0.d0
+       bitil45(i)=0.d0     
+
+c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*
+
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      aq3=aqq*aq
+      aq4=aqq*aqq
+c
+      do 315 ik=1,nqf
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak3*ak2
+      ak7=ak5*ak2
+      
+      axx= c4+(2.d0*(qfq-yyoff))+aqq-ak2
+      aww= (qfq*aqq*aqq)+(yyoff*((c4+ak2)**2))
+     1    +(aqq*(((qfq-yyoff)**2)+(c4*(qfq+yyoff))
+     2    -(ak2*(qfq+yyoff+c4))))
+     
+      raww=dsqrt(aww)
+      
+      aint= dlog((aq*axx+2.d0*raww)
+     1     /((2.d0*yoff+aq)*(c4+((aq-ak1)**2))))
+
+c     J-intergrals
+c    ****************
+
+      bjint1(i)=bjint1(i)+(((2.d0*c4+ak2)*(2.d0*c4+aqq+2.d0*ak2)
+     1          *datan(ak1/(2.d0*rc4))*(((qfq-((yoff-ak1)**2))/yoff)
+     2          +(((aqq-c4-ak2)/aq)*aint)))*wk(ik))
+     
+     
+      bjint2(i)=bjint2(i)+((((2.d0*rc4*ak1)+((4.d0*c4+ak2)
+     1          *datan(ak1/(2.d0*rc4))))*(((1.d0/yoff)*(aqq-c4-ak2)
+     2          *(qfq-((yoff-ak1)**2)))+((1.d0/aq)*(c4+((aq+ak1)**2))
+     3          *(c4+((aq-ak1)**2))*aint)))*wk(ik))
+        
+
+c     H-intergrals
+c    ****************
+ 
+      esf1=fj1(ak1,ga2,c4)
+      esf4=fj4(ak1,ga2,c4)
+      esf5=fj5(ak1,ga2,c4)      
+ 
+
+      bhint10(i)= bhint10(i)+(ak1*(qfq-((yoff-ak1)**2))*esf1*wk(ik))
+      bhint11(i)= bhint11(i)+(ak1*(((yoff+ak1)**2)-qfq)
+     1           *(qfq-((yoff-ak1)**2))*esf1*wk(ik))
+      bhint12(i)= bhint12(i)+(ak1*(ak2+4.d0*ak1*yoff+yyoff-qfq)
+     1           *(qfq-((yoff-ak1)**2))*esf1*wk(ik))
+      bhint13(i)= bhint13(i)+(ak1*(((yoff+ak1)**2)-qfq)
+     1           *(qfq-((yoff-ak1)**2))*(yyoff+ak2-qfq)
+     2           *esf1*wk(ik))
+      
+      bhint40(i)= bhint40(i)+(ak1*(qfq-((yoff-ak1)**2))*esf4*wk(ik))
+      bhint41(i)= bhint41(i)+(ak1*(((yoff+ak1)**2)-qfq)
+     1           *(qfq-((yoff-ak1)**2))*esf4*wk(ik))
+      bhint42(i)= bhint42(i)+(ak1*(ak2+4.d0*ak1*yoff+yyoff-qfq)
+     1           *(qfq-((yoff-ak1)**2))*esf4*wk(ik))
+      bhint43(i)= bhint43(i)+(ak1*(((yoff+ak1)**2)-qfq)
+     1           *(qfq-((yoff-ak1)**2))*(yyoff+ak2-qfq)
+     2           *esf4*wk(ik))
+      
+      bhint50(i)= bhint50(i)+(ak1*(qfq-((yoff-ak1)**2))*esf5*wk(ik))
+      bhint51(i)= bhint51(i)+(ak1*(((yoff+ak1)**2)-qfq)
+     1           *(qfq-((yoff-ak1)**2))*esf5*wk(ik))
+      bhint52(i)= bhint52(i)+(ak1*(ak2+4.d0*ak1*yoff+yyoff-qfq)
+     1           *(qfq-((yoff-ak1)**2))*esf5*wk(ik))
+      bhint53(i)= bhint53(i)+(ak1*(((yoff+ak1)**2)-qfq)
+     1           *(qfq-((yoff-ak1)**2))*(yyoff+ak2-qfq)
+     2           *esf5*wk(ik))
+
+c     I-intergrals
+c    ****************
+
+      esf2=fj2(ak1,ga2,c4)
+      esf3=fj3(ak1,ga2,c4)
+      esf6=fj6(ak1,ga2,c4)    
+      esf7=fj7(ak1,ga2,c4)
+      esf8=fj8(ak1,ga2,c4)   
+      
+      
+      biint10(i)= biint10(i)+(ak1*esf1*aint*wk(ik))
+      biint11(i)= biint11(i)+(ak1*esf1*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint12(i)= biint12(i)+(ak1*esf1*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint13(i)= biint13(i)+(ak1*esf1*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint14(i)= biint14(i)+(ak1*esf1*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint15(i)= biint15(i)+(ak1*esf1*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+      biint20(i)= biint20(i)+(ak1*esf2*aint*wk(ik))
+      biint21(i)= biint21(i)+(ak1*esf2*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint22(i)= biint22(i)+(ak1*esf2*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint23(i)= biint23(i)+(ak1*esf2*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint24(i)= biint24(i)+(ak1*esf2*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint25(i)= biint25(i)+(ak1*esf2*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+      biint30(i)= biint30(i)+(ak1*esf3*aint*wk(ik))
+      biint31(i)= biint31(i)+(ak1*esf3*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint32(i)= biint32(i)+(ak1*esf3*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint33(i)= biint33(i)+(ak1*esf3*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint34(i)= biint34(i)+(ak1*esf3*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint35(i)= biint35(i)+(ak1*esf3*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+      biint40(i)= biint40(i)+(ak1*esf4*aint*wk(ik))
+      biint41(i)= biint41(i)+(ak1*esf4*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint42(i)= biint42(i)+(ak1*esf4*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint43(i)= biint43(i)+(ak1*esf4*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint44(i)= biint44(i)+(ak1*esf4*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint45(i)= biint45(i)+(ak1*esf4*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+      biint50(i)= biint50(i)+(ak1*esf5*aint*wk(ik))
+      biint51(i)= biint51(i)+(ak1*esf5*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint52(i)= biint52(i)+(ak1*esf5*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint53(i)= biint53(i)+(ak1*esf5*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint54(i)= biint54(i)+(ak1*esf5*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint55(i)= biint55(i)+(ak1*esf5*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+      biint60(i)= biint60(i)+(ak1*esf6*aint*wk(ik))
+      biint61(i)= biint61(i)+(ak1*esf6*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint62(i)= biint62(i)+(ak1*esf6*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint63(i)= biint63(i)+(ak1*esf6*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint64(i)= biint64(i)+(ak1*esf6*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint65(i)= biint65(i)+(ak1*esf6*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+      biint70(i)= biint70(i)+(ak1*esf7*aint*wk(ik))
+      biint71(i)= biint71(i)+(ak1*esf7*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint72(i)= biint72(i)+(ak1*esf7*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint73(i)= biint73(i)+(ak1*esf7*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint74(i)= biint74(i)+(ak1*esf7*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint75(i)= biint75(i)+(ak1*esf7*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+      biint80(i)=biint80(i)+(ak1*esf8*aint*wk(ik))
+      biint81(i)=biint81(i)+(ak1*esf8*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      biint82(i)=biint82(i)+(ak1*esf8*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      biint83(i)=biint83(i)+(ak1*esf8*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      biint84(i)=biint84(i)+(ak1*esf8*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      biint85(i)=biint85(i)+(ak1*esf8*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+
+
+c     Itilda-intergrals
+c    *******************
+      
+      tesf1=(ak2-c4-aqq)*esf1
+      tesf4=(ak2-c4-aqq)*esf4
+
+
+      bitil10(i)= bitil10(i)+(ak1*tesf1*aint*wk(ik))
+      bitil11(i)= bitil11(i)+(ak1*tesf1*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      bitil12(i)= bitil12(i)+(ak1*tesf1*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      bitil13(i)= bitil13(i)+(ak1*tesf1*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      bitil14(i)= bitil14(i)+(ak1*tesf1*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      bitil15(i)= bitil15(i)+(ak1*tesf1*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))
+                  
+      bitil40(i)= bitil40(i)+(ak1*tesf4*aint*wk(ik))
+      bitil41(i)= bitil41(i)+(ak1*tesf4*(((yoff*(ak2+c4)-raww)/aqq)
+     1           +((yyoff+qfq-ak2)/(2.d0*yoff)))*wk(ik))
+      bitil42(i)= bitil42(i)+(ak1*tesf4*((ak1*(c4+ak2+aqq))
+     1          -(yoff*(c4+ak2+(3.d0*aqq/4.d0)))-((((c4+((ak1+aq)**2))
+     2          *(c4+((ak1-aq)**2)))/(2.d0*aq))*aint)
+     3          -((axx*raww)/((4.d0*yyoff)-aqq))-(((qfq-ak2)**2)/yoff)
+     4          +((yoff/((4.d0*yyoff)-aqq))
+     5          *((c4+2.d0*qfq-ak2+(aqq/2.d0))**2)))*wk(ik))
+      bitil43(i)= bitil43(i)+(ak1*tesf4*(((axx*raww)/aqq)
+     1          +((aqq*((qfq-ak2)**2))/(8.d0*y3off))-((3.d0*yoff*aqq)
+     2         /8.d0)+((yoff*(ak2+c4)*(2.d0*yyoff+ak2-2.d0*qfq-c4))/aqq)
+     3          +((yoff*(2.d0*qfq-3.d0*c4+yyoff-ak2))/2.d0)
+     4          +(((ak2*(2.d0*c4+aqq-4.d0*ak2))+(qfq*(10.d0*ak2
+     5          -2.d0*c4-3.d0*aqq))-(6.d0*qf4))/(4.d0*yoff)))*wk(ik))
+      bitil44(i)= bitil44(i)+(ak1*tesf4*(((axx/((4.d0*yyoff-aqq)**2))
+     1          *((raww*(3.d0*aqq-4.d0*yyoff))-8.d0*y3off*axx))
+     2          +(((aq3/2.d0)+(aq*(ak2-c4))-((3.d0/(2.d0*aq))
+     3          *((ak2+c4)**2)))*aint)+((yoff/(4.d0*yyoff-aqq))
+     4          *(16.d0*qf4+(8.d0*qfq*(2.d0*c4+aqq-2.d0*ak2))+3.d0*c4r4
+     5          +3.d0*ak4+(2.d0*aqq*(c4-ak2))-10.d0*ak2*c4))
+     6          +(ak1*(3.d0*ak2-aqq+3.d0*c4))+2.d0*y3off
+     7         -(yoff*(4.d0*qfq+4.d0*c4+aqq))+((2.d0/yoff)*(qfq+aqq-ak2)
+     8          *(ak2-qfq)))*wk(ik))
+      bitil45(i)= bitil45(i)+(ak1*tesf4*((((aqq-ak2-c4)/aq)*aint)
+     1          +((qfq-((yoff-ak1)**2))/yoff))*wk(ik))   
+
+
+  315 continue
+c
+c     J-intergrals
+c    ****************     
+      
+      bjint1(i)=bjint1(i)*1.d0/(4.d0*aqq)
+      
+      bjint2(i)=bjint2(i)*1.d0/(4.d0*aqq)
+
+c     H-intergrals
+c    ****************
+      bhint10(i)= bhint10(i)*1.d0/(2.d0*yoff)
+      bhint11(i)= bhint11(i)*1.d0/(8.d0*y3off)
+      bhint12(i)= bhint12(i)*1.d0/(48.d0*y3off)
+      bhint13(i)= bhint13(i)*1.d0/(16.d0*y5off)
+      
+      bhint40(i)= bhint40(i)*1.d0/(2.d0*yoff)
+      bhint41(i)= bhint41(i)*1.d0/(8.d0*y3off)
+      bhint42(i)= bhint42(i)*1.d0/(48.d0*y3off)
+      bhint43(i)= bhint43(i)*1.d0/(16.d0*y5off)
+      
+      bhint50(i)= bhint50(i)*1.d0/(2.d0*yoff)
+      bhint51(i)= bhint51(i)*1.d0/(8.d0*y3off)
+      bhint52(i)= bhint52(i)*1.d0/(48.d0*y3off)
+      bhint53(i)= bhint53(i)*1.d0/(16.d0*y5off)
+
+c     I-intergrals
+c    ****************
+
+      biint10(i)= biint10(i)*1.d0/(2.d0*aq)
+      biint11(i)= biint11(i)*1.d0/(4.d0*yyoff-aqq)
+      biint12(i)= biint12(i)*1.d0/(8.d0*aqq)
+      biint13(i)= biint13(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint14(i)= biint14(i)*1.d0/(4.d0*aq4)
+      biint15(i)= biint15(i)*1.d0/(2.d0*aqq)
+      biint15(i)= biint15(i)-biint14(i)
+
+      biint20(i)= biint20(i)*1.d0/(2.d0*aq)
+      biint21(i)= biint21(i)*1.d0/(4.d0*yyoff-aqq)
+      biint22(i)= biint22(i)*1.d0/(8.d0*aqq)
+      biint23(i)= biint23(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint24(i)= biint24(i)*1.d0/(4.d0*aq4)
+      biint25(i)= biint25(i)*1.d0/(2.d0*aqq)
+      biint25(i)= biint25(i)-biint24(i)
+
+      biint30(i)= biint30(i)*1.d0/(2.d0*aq)
+      biint31(i)= biint31(i)*1.d0/(4.d0*yyoff-aqq)
+      biint32(i)= biint32(i)*1.d0/(8.d0*aqq)
+      biint33(i)= biint33(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint34(i)= biint34(i)*1.d0/(4.d0*aq4)
+      biint35(i)= biint35(i)*1.d0/(2.d0*aqq)
+      biint35(i)= biint35(i)-biint34(i)
+
+      biint40(i)= biint40(i)*1.d0/(2.d0*aq)
+      biint41(i)= biint41(i)*1.d0/(4.d0*yyoff-aqq)
+      biint42(i)= biint42(i)*1.d0/(8.d0*aqq)
+      biint43(i)= biint43(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint44(i)= biint44(i)*1.d0/(4.d0*aq4)
+      biint45(i)= biint45(i)*1.d0/(2.d0*aqq)
+      biint45(i)= biint45(i)-biint44(i)
+
+      biint50(i)= biint50(i)*1.d0/(2.d0*aq)
+      biint51(i)= biint51(i)*1.d0/(4.d0*yyoff-aqq)
+      biint52(i)= biint52(i)*1.d0/(8.d0*aqq)
+      biint53(i)= biint53(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint54(i)= biint54(i)*1.d0/(4.d0*aq4)
+      biint55(i)= biint55(i)*1.d0/(2.d0*aqq)
+      biint55(i)= biint55(i)-biint54(i)
+
+      biint60(i)= biint60(i)*1.d0/(2.d0*aq)
+      biint61(i)= biint61(i)*1.d0/(4.d0*yyoff-aqq)
+      biint62(i)= biint62(i)*1.d0/(8.d0*aqq)
+      biint63(i)= biint63(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint64(i)= biint64(i)*1.d0/(4.d0*aq4)
+      biint65(i)= biint65(i)*1.d0/(2.d0*aqq)
+      biint65(i)= biint65(i)-biint64(i)
+
+      biint70(i)= biint70(i)*1.d0/(2.d0*aq)
+      biint71(i)= biint71(i)*1.d0/(4.d0*yyoff-aqq)
+      biint72(i)= biint72(i)*1.d0/(8.d0*aqq)
+      biint73(i)= biint73(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint74(i)= biint74(i)*1.d0/(4.d0*aq4)
+      biint75(i)= biint75(i)*1.d0/(2.d0*aqq)
+      biint75(i)= biint75(i)-biint74(i)
+
+      biint80(i)= biint80(i)*1.d0/(2.d0*aq)
+      biint81(i)= biint81(i)*1.d0/(4.d0*yyoff-aqq)
+      biint82(i)= biint82(i)*1.d0/(8.d0*aqq)
+      biint83(i)= biint83(i)*1.d0/((4.d0*yyoff-aqq)**2)
+      biint84(i)= biint84(i)*1.d0/(4.d0*aq4)
+      biint85(i)= biint85(i)*1.d0/(2.d0*aqq)
+      biint85(i)= biint85(i)-biint84(i)
+
+
+c     Itilda-intergrals
+c    *******************
+       
+       bitil10(i)= bitil10(i)*1.d0/(2.d0*aq)
+       bitil11(i)= bitil11(i)*1.d0/(4.d0*yyoff-aqq)
+       bitil12(i)= bitil12(i)*1.d0/(8.d0*aqq)
+       bitil13(i)= bitil13(i)*1.d0/((4.d0*yyoff-aqq)**2)
+       bitil14(i)= bitil14(i)*1.d0/(4.d0*aq4)
+       bitil15(i)= bitil15(i)*1.d0/(2.d0*aqq)
+       bitil15(i)= bitil15(i)-bitil14(i)
+                   
+       bitil40(i)= bitil40(i)*1.d0/(2.d0*aq)
+       bitil41(i)= bitil41(i)*1.d0/(4.d0*yyoff-aqq)
+       bitil42(i)= bitil42(i)*1.d0/(8.d0*aqq)
+       bitil43(i)= bitil43(i)*1.d0/((4.d0*yyoff-aqq)**2)
+       bitil44(i)= bitil44(i)*1.d0/(4.d0*aq4)
+       bitil45(i)= bitil45(i)*1.d0/(2.d0*aqq)
+       bitil45(i)= bitil45(i)-bitil44(i)
+
+
+
+
+
+c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*c*
+      write(287,*) bjint1(i), bjint2(i)  
+    
+      write(347,*) bhint10(i), bhint11(i), bhint12(i), bhint13(i)  
+      write(348,*) bhint40(i), bhint41(i), bhint42(i), bhint43(i) 
+      write(349,*) bhint50(i), bhint51(i), bhint52(i), bhint53(i) 
+    
+      write(581,*) biint10(i), biint11(i), biint12(i), biint13(i),  
+     1             biint14(i), biint15(i)
+      write(582,*) biint20(i), biint21(i), biint22(i), biint23(i),  
+     1             biint24(i), biint25(i)
+      write(583,*) biint30(i), biint31(i), biint32(i), biint33(i),  
+     1             biint34(i), biint35(i)
+      write(584,*) biint40(i), biint41(i), biint42(i), biint43(i),  
+     1             biint44(i), biint45(i)
+      write(585,*) biint50(i), biint51(i), biint52(i), biint53(i),  
+     1             biint54(i), biint55(i)
+      write(586,*) biint60(i), biint61(i), biint62(i), biint63(i),  
+     1             biint64(i), biint65(i)
+      write(587,*) biint70(i), biint71(i), biint72(i), biint73(i),  
+     1             biint74(i), biint75(i)
+      write(588,*) biint80(i), biint81(i), biint82(i), biint83(i),  
+     1             biint84(i), biint85(i)
+
+
+      write(651,*) bitil10(i), bitil11(i), bitil12(i), bitil13(i), 
+     1             bitil14(i), bitil15(i)
+      write(654,*) bitil40(i), bitil41(i), bitil42(i), bitil43(i), 
+     1             bitil44(i), bitil45(i)     
+
+  415 continue
+c
+c
+c
+c
+c
+c
+c        propagator
+c        ----------
+c        ----------
+c
+c
+   50 continue
+      iprsp=ic(1,im)
+      if (iprsp.lt.0) go to 60
+      iret=iprsp+1
+c
+c         propagator for the nn case
+      do 55 i=1,nt
+   55 aa(i)=wt(i)/(c4-deltaq(i,iret))
+      go to 80
+c
+c
+c        "no propagator"
+c
+   60 do 65 i=1,nt
+   65 aa(i)=wt(i)
+c
+c
+   80 continue
+c
+c
+c
+c
+c
+c        cut-offs and functions
+c        ----------------------
+c        ----------------------
+c
+c
+      mi=4
+      mm=5
+c
+c
+ 5999 ityp=ic(mi,im)
+      if (ityp.eq.0) go to 8010
+      if (ityp.le.10) then
+      iprspc=ic(mi+1,im)
+      iret=iprspc+1
+      end if
+      go to (100,100,300,9002,500,600,9002,9002,9002,9002,
+     1 1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,
+     2 2100,2200,2300,2400,2500,2600,2700,2800,2900,3000,
+     3 3100,3200,3300,3400,3500,3600,3700,3800,3900,4000,
+     4 4100,4200,4300,4400,4500,4600,4700,4800,4900,5000,
+     5 5100,5200,5300,5400,5500,5600,5700,5800,5900,6000,
+     6 6100,6200,6300,6400,6500,6600,6700,6800,6900,7000,
+     7 7100,7200,7300,7400,7500,7600,7700,7800,7900,8000,
+     8 8100,8200,8300,8400,8500,8600,8700,8800,8900,9000,
+     9 9100,9200,9300,9400,9500,9600,9700,9800,9900,10000,
+     1 10100,10200,10300,10400,10500,10600,10700,10800,
+     2 10900,11000,11100,11200,11300,11400,11500,11600,
+     3 11700,11800,11900,12000,12100,12200,12300,12400,
+     4 12500,12600,12700,12800,12900,13000,13100,13200,
+     5 13300,13400,13500,13600,13700,13800,13900,14000,
+     6 14100,14200,14300,14400,14500,14600,14700,14800,
+     7 14900,15000,15100,15200,15300,15400,15500,15600,
+     8 15700,15800,15900,16000,16100,16200,16300,16400,
+     9 16500,16600),ityp
+c
+c
+c
+c
+c        cut-off of dipole type
+c        **********************
+c
+c
+  100 c5=c(mm,im)
+      c6=c(mm+1,im)
+      nexp=ic(mi+2,im)
+c
+      do 105 i=1,nt
+c
+      aaa=c5/(c6-deltaq(i,iret))
+c     -------------------------
+c
+      do 105 ii=1,nexp
+  105 aa(i)=aa(i)*aaa
+c
+c
+      mi=mi+3
+      mm=mm+2
+      go to 5999
+c
+c
+c
+c
+c        exponential form factor of momentum transfer
+c        ********************************************
+c
+c
+  300 c5=c(mm,im)
+      c6=c(mm+1,im)
+      do 305 i=1,nt
+c
+      expo=(c5*dabs(deltaq(i,iret)))**c6
+c     ----------------------------
+c
+      if (expo.gt.rrr) expo=rrr
+c
+      aa(i)=aa(i)*dexp(-expo)
+c     ----------------------
+c
+  305 continue
+      mi=mi+2
+      mm=mm+2
+      go to 5999
+c
+c
+c
+c
+c        sharp cutoff of x and y
+c        ***********************
+c
+c
+  500 c5=c(mm,im)
+c
+      if (x.gt.c5.or.y.gt.c5) then
+c     ----------------------------
+      do 505 i=1,nt
+  505 aa(i)=0.d0
+      end if
+c
+      mi=mi+2
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        exponential form factor of xx and yy
+c        ************************************
+c
+c
+  600 c5=c(mm,im)
+      c6=c(mm+1,im)
+c
+      expo=(c5*xx)**c6+(c5*yy)**c6
+c     ----------------------------
+      if (expo.gt.rrr) expo=rrr
+      expexp=dexp(-expo)
+c     ------------------
+c
+      do 605 i=1,nt
+  605 aa(i)=aa(i)*expexp
+      mi=mi+2
+      mm=mm+2
+      go to 5999
+c
+c
+c
+c
+c        function +q^2 (momentum-transfer squared)
+c        *************
+c
+c
+ 1100 c5=c(mm,im)
+      if (c5.eq.0.d0) c5=1.d0
+      do 1105 i=1,nt
+ 1105 aa(i)=-aa(i)*deltaq(i,1)*c5
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function k^2 (average-momentum squared)
+c        ************
+c
+c
+ 1200 c5=c(mm,im)
+      if (c5.eq.0.d0) c5=1.d0
+      do 1205 i=1,nt
+ 1205 aa(i)=aa(i)*deltaq(i,3)*c5
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,1
+c        *******************
+c
+c
+ 1300 continue
+      c5=c(mm,im)
+      do 1305 i=1,nt
+      aqq=-deltaq(i,1)
+ 1305 aa(i)=aa(i)*c5*(2.d0*cb1*c4+cb3*aqq)/(c4+aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,2
+c        *******************
+c
+c
+ 1400 continue
+      c5=c(mm,im)
+      do 1405 i=1,nt
+      aqq=-deltaq(i,1)
+      confac=-4.d0*cb1*c4*(gamma0+gamma1)-(cb3+cb4)*
+     1       (aqq*gam013+4.d0*gamma2)
+     2       +4.d0*cb4*(2.d0*qf3/3.d0-c4*gamma0)
+ 1405 aa(i)=aa(i)*c5*confac
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1500 continue
+      c5=c(mm,im)
+      do 1505 i=1,nt
+      aqq=-deltaq(i,1)
+      c42qq=2.d0*c4+aqq
+      facct=-12.d0*cb1*c4*(2.d0*gamma0-c42qq*gint0(i))
+     1       -cb3*(8.d0*qf3-12.d0*c42qq*gamma0-6.d0*aqq*gamma1
+     2       +3.d0*c42qq**2*gint0(i))
+ 1505 aa(i)=aa(i)*c5*facct
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1600 continue
+      c5=c(mm,im)
+      do 1605 i=1,nt
+ 1605 aa(i)=aa(i)*c5*cb4*gint2(i)*4.d0
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1700 continue
+      c5=c(mm,im)
+      do 1705 i=1,nt
+      aqq=-deltaq(i,1)
+      c42qq=2.d0*c4+aqq
+      facct=2.d0*cb4*(2.d0*gamma0+2.d0*gamma1
+     1      -c42qq*(gint0(i)+2.d0*gint1(i)))
+ 1705 aa(i)=aa(i)*c5*facct
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1800 continue
+      c5=c(mm,im)
+      do 1805 i=1,nt
+      aqq=-deltaq(i,1)
+      c42qq=2.d0*c4+aqq
+      term1=6.d0*cb3*(2.d0*gamma0+2.d0*gamma1
+     1      -c42qq*(gint0(i)+2.d0*gint1(i)))
+      term2=24.d0*cb1*c4*(gint0(i)+2.d0*gint1(i))
+ 1805 aa(i)=aa(i)*c5*(term1+term2)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,3
+c        *******************
+c
+c
+ 1900 continue
+      c5=c(mm,im)
+      do 1905 i=1,nt
+      facct=4.d0*cb4*(gint0(i)+4.d0*gint1(i)+4.d0*gint3(i))
+ 1905 aa(i)=aa(i)*c5*facct
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,4
+c        *******************
+c
+c
+ 2000 continue
+      c5=c(mm,im)
+      do 2005 i=1,nt
+ 2005 aa(i)=aa(i)*c5
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2100 continue
+      c5=c(mm,im)
+      do 2105 i=1,nt
+      aqq=-deltaq(i,1)
+ 2105 aa(i)=aa(i)*c5*(2.d0*gamma2+(2.d0*yyoff-0.5d0*aqq)*gam013)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2200 continue
+      c5=c(mm,im)
+      do 2205 i=1,nt
+      aqq=-deltaq(i,1)
+ 2205 aa(i)=aa(i)*c5*(1.d0-2.d0*yyoff/aqq)*gam013
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2300 continue
+      c5=c(mm,im)
+      do 2305 i=1,nt
+      aqq=-deltaq(i,1)
+ 2305 aa(i)=aa(i)*c5*2.d0/aqq*gam013
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,5
+c        *******************
+c
+c
+ 2400 continue
+      c5=c(mm,im)
+      confac=4.d0*qf3-6.d0*c4*gamma0
+      do 2405 i=1,nt
+ 2405 aa(i)=aa(i)*c5*confac
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,6
+c        *******************
+c
+c
+ 2500 continue
+      c5=c(mm,im)
+      do 2505 i=1,nt
+ 2505 aa(i)=aa(i)*c5
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c        function for vmed,7
+c        *******************
+c
+c
+c 2600 continue
+c      c5=c(mm,im)
+c      do 2605 i=1,nt
+c       aqq=-deltaq(i,1)
+c      c42qq=2.d0*c4 + aqq
+c      facct= rootc4+c42qq*(1.d0/(2.d0*aq)*
+c     1       datan(aq/(2.d0*rootc4)))
+c 2605 aa(i)=aa(i)*c5*facct*qf3
+c      mi=mi+1
+c      mm=mm+1
+c      go to 5999
+
+c
+c        function for vmed,7
+c        *******************
+c
+c
+ 2600 continue
+      c5=c(mm,im)
+      do 2605 i=1,nt
+      aqq=-deltaq(i,1)
+      aq1 = dsqrt(aqq) 
+      rc4= dsqrt(c4)
+      c42qq=2.d0*c4 + aqq
+      capA=(1.d0/(2.d0*aq1))*datan(aq1/(2.d0*rc4))
+      cff= rc4+(c42qq*capA)
+ 2605 aa(i)=aa(i)*c5*cff*qf3
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c    function for vmed,8
+c    *******************
+ 2700  continue
+       c5=c(mm,im)
+       do 2705 i=1,nt
+       rc4=dsqrt(c4)
+       c4r3=c4*rc4
+       pkp= yoff+qf
+       pkp2=pkp**2
+       pkm=yoff-qf
+       pkm2=pkm**2
+       t1=qf*rc4*(yyoff+11.d0*qfq-4.d0*c4)
+       t2a=((qf/yoff)*(qfq+10.d0*c4))-5.d0*c4
+       t2b=(7.d0*qfq/4.d0)+(qf*yoff/2.d0)-(yyoff/4.d0)
+       t2ab=t2a+t2b 
+       t2=pkp2*t2ab*datan(pkp/(2.d0*rc4))
+       t3a=((qf/yoff)*(qfq+10.d0*c4))+5.d0*c4
+       t3b=-(7.d0*qfq/4.d0)+(qf*yoff/2.d0)+(yyoff/4.d0)
+       t3ab=t3a+t3b
+       t3=pkm2*t3ab*datan(pkm/(2.d0*rc4))
+       t4a=(5.d0*yyoff)-(5.d0*qfq)+(4.d0*c4) 
+       t4b=dlog((4.d0*c4+pkp2)/(4.d0*c4+pkm2))
+       t4=(c4r3/yoff)*t4a*t4b      
+       t1234=t1+t2+t3+t4
+ 2705  aa(i)=aa(i)*c5*t1234
+       mi=mi+1
+       mm=mm+1
+       go to 5999
+c
+c
+c
+c
+c
+c    function for vmed,8
+c    *******************
+ 2800  continue
+       c5=c(mm,im)
+       do 2805 i=1,nt
+       rc4=dsqrt(c4)
+       c4r3=c4*rc4
+       pkp= yoff+qf
+       pkp2=pkp**2
+       pkm=yoff-qf
+       pkm2=pkm**2
+       t1=qf*rc4*(yyoff+11.d0*qfq-4.d0*c4)
+       t2a=((qf/yoff)*(qfq+10.d0*c4))-5.d0*c4
+       t2b=(7.d0*qfq/4.d0)+(qf*yoff/2.d0)-(yyoff/4.d0)
+       t2ab=t2a+t2b
+       t2=pkp2*t2ab*datan(pkp/(2.d0*rc4))
+       t3a=((qf/yoff)*(qfq+10.d0*c4))+5.d0*c4
+       t3b=-(7.d0*qfq/4.d0)+(qf*yoff/2.d0)+(yyoff/4.d0)
+       t3ab=t3a+t3b
+       t3=pkm2*t3ab*datan(pkm/(2.d0*rc4))
+       t4a=(5.d0*yyoff)-(5.d0*qfq)+(4.d0*c4)
+       t4b=dlog((4.d0*c4+pkp2)/(4.d0*c4+pkm2))
+       t4=(c4r3/yoff)*t4a*t4b
+       t1234=t1+t2+t3+t4
+ 2805  aa(i)=aa(i)*c5*t1234
+       mi=mi+1
+       mm=mm+1
+       go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,9
+c        *******************
+c
+c
+ 2900 continue
+      c5=c(mm,im)
+      do 2905 i=1,nt
+      aqq=-deltaq(i,1)
+      aq1 = dsqrt(aqq)
+      rc4= dsqrt(c4)
+      capA=(1.d0/(2.d0*aq1))*datan(aq1/(2.d0*rc4))
+ 2905 aa(i)=aa(i)*c5*qf3*capA
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,9
+c        *******************
+c
+c
+ 3000 continue
+      c5=c(mm,im)
+      do 3005 i=1,nt
+      aqq=-deltaq(i,1)
+      aq1 = dsqrt(aqq)
+      rc4= dsqrt(c4)
+      capA=(1.d0/(2.d0*aq1))*datan(aq1/(2.d0*rc4))
+ 3005 aa(i)=aa(i)*c5*qf3*aqq*capA
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c        function for vmed,9
+c        *******************
+c
+c
+ 3100 continue
+      c5=c(mm,im)
+      do 3105 i=1,nt
+      aqq=-deltaq(i,1)
+      aq1 = dsqrt(aqq)
+      rc4= dsqrt(c4)
+      r3c4= c4*rc4
+      c42qq=2.d0*c4 + aqq
+      c44qq=(4.d0*c4)+aqq
+      capA=(1.d0/(2.d0*aq1))*datan(aq1/(2.d0*rc4))
+      t1=(r3c4/c44qq)-(3.d0*rc4)-(2.d0*c42qq*capA)
+ 3105 aa(i)=aa(i)*c5*qf3*t1
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,10
+c        *******************
+c
+ 3200 continue
+      c5=c(mm,im)
+      do 3205 i=1,nt
+       aqq=-deltaq(i,1) 
+      
+ 3205 aa(i)=aa(i)*c5*haitch1
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,10
+c        *******************
+c
+ 3300 continue
+      c5=c(mm,im)
+      do 3305 i=1,nt
+       aqq=-deltaq(i,1)
+
+ 3305 aa(i)=aa(i)*c5*haitch0
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,10
+c        *******************
+c
+ 3400 continue
+      c5=c(mm,im)
+      do 3405 i=1,nt
+       aqq=-deltaq(i,1)
+
+ 3405 aa(i)=aa(i)*c5*haitch0
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,10
+c        *******************
+c
+ 3500 continue
+      c5=c(mm,im)
+      do 3505 i=1,nt
+       aqq=-deltaq(i,1)
+
+ 3505 aa(i)=aa(i)*c5*haitch2
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,10
+c        *******************
+c
+ 3600 continue
+      c5=c(mm,im)
+      do 3605 i=1,nt
+       aqq=-deltaq(i,1)
+
+
+ 3605 aa(i)=aa(i)*c5*haitch3*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+
+c
+c
+c
+c
+c        function for vmed,10
+c        *******************
+c
+ 3700 continue
+      c5=c(mm,im)
+      do 3705 i=1,nt
+       aqq=-deltaq(i,1)
+       aay=aqq*(yyoff-(aqq/4.d0))
+ 3705 aa(i)=aa(i)*c5*haitch3*(2.d0/aqq)*aay
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,10
+c        *******************
+c
+ 3800 continue
+      c5=c(mm,im)
+      do 3805 i=1,nt
+       aqq=-deltaq(i,1)
+       bey=(aqq/2.d0)-yyoff
+ 3805 aa(i)=aa(i)*c5*haitch3*(2.d0/aqq)*bey
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,11
+c        *******************
+c
+c
+ 3900 continue
+      c5=c(mm,im)
+      do 3905 i=1,nt
+ 3905 aa(i)=aa(i)*c5*qf3
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,12
+c        *******************
+c
+c
+ 4000 continue
+      c5=c(mm,im)
+      do 4005 i=1,nt
+      aqq=-deltaq(i,1)
+      gam30= gamma3-gamma0
+      gam01=gamma0+gamma1
+      fa=(2.d0*yyoff*gam30)+(((3.d0*aqq)/4.d0)*gam01)+(4.d0*gamma2)
+ 4005 aa(i)=aa(i)*c5*fa
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,12
+c        *******************
+c
+c
+ 4100 continue
+      c5=c(mm,im)
+      do 4105 i=1,nt
+      gam01=gamma0+gamma1
+ 4105 aa(i)=aa(i)*c5*gam01
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,12
+c        *******************
+c
+c
+ 4200 continue
+      c5=c(mm,im)
+      do 4205 i=1,nt
+      aqq=-deltaq(i,1)
+      gam03= gamma0-gamma3
+ 4205 aa(i)=aa(i)*c5*gam03*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,12
+c        *******************
+c
+c
+ 4300 continue
+      c5=c(mm,im)
+      do 4305 i=1,nt
+      aqq=-deltaq(i,1)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      gam03= gamma0-gamma3
+ 4305 aa(i)=aa(i)*c5*gam03*(2.d0/aqq)*aay
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,12
+c        *******************
+c
+c
+ 4400 continue
+      c5=c(mm,im)
+      do 4405 i=1,nt
+       aqq=-deltaq(i,1)
+       bey=(aqq/2.d0)-yyoff
+       gam03= gamma0-gamma3
+ 4405 aa(i)=aa(i)*c5*gam03*(2.d0/aqq)*bey
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,12
+c        *******************
+c
+c
+ 4500 continue
+      c5=c(mm,im)
+      do 4505 i=1,nt
+      gam01=gamma0+gamma1
+ 4505 aa(i)=aa(i)*c5*gam01
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,12
+c        *******************
+c
+c
+ 4600 continue
+      c5=c(mm,im)
+      do 4605 i=1,nt
+        aqq=-deltaq(i,1)
+        gam01=gamma0+gamma1
+ 4605 aa(i)=aa(i)*c5*gam01*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,13
+c        *******************
+c
+c
+ 4700 continue
+      c5=c(mm,im)
+      do 4705 i=1,nt
+      aqq=-deltaq(i,1)
+      ga013= (5.d0*gamma0)+(6.d0*gamma1)+gamma3
+      gam01=gamma0+gamma1
+      fa1=ctt*(((3.d0*aqq/2.d0)*gam01)-(yyoff*ga013))
+      fa2=gamma2*(2.d0*ctt+3.d0*css)
+      fa12=fa1-fa2
+ 4705 aa(i)=aa(i)*c5*fa12
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,13
+c        *******************
+c
+c
+ 4800 continue
+      c5=c(mm,im)
+      do 4805 i=1,nt
+      gam01=gamma0+gamma1
+ 4805 aa(i)=aa(i)*c5*gam01
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,13
+c        *******************
+c
+c
+ 4900 continue
+      c5=c(mm,im)
+      do 4905 i=1,nt
+      aqq=-deltaq(i,1)
+      ga013= (5.d0*gamma0)+(6.d0*gamma1)+gamma3
+      xga013= gamma0+(2.d0*gamma1)+gamma3
+      fa1=ctt*ga013
+      fa2=3.d0*css*xga013
+      fa12=fa1-fa2
+ 4905 aa(i)=aa(i)*c5*fa12*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,13
+c        *******************
+c
+c
+ 5000 continue
+      c5=c(mm,im)
+      do 5005 i=1,nt
+      aqq=-deltaq(i,1)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      ga013= (5.d0*gamma0)+(6.d0*gamma1)+gamma3
+      xga013= gamma0+(2.d0*gamma1)+gamma3
+      fa1=ctt*ga013
+      fa2=3.d0*css*xga013
+      fa12=fa1-fa2
+ 5005 aa(i)=aa(i)*c5*fa12*(2.d0/aqq)*aay
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,13
+c        *******************
+c
+c
+ 5100 continue
+      c5=c(mm,im)
+      do 5105 i=1,nt
+      aqq=-deltaq(i,1)
+      bey=(aqq/2.d0)-yyoff
+      ga013= (5.d0*gamma0)+(6.d0*gamma1)+gamma3
+      xga013= gamma0+(2.d0*gamma1)+gamma3
+      fa1=ctt*ga013
+      fa2=3.d0*css*xga013
+      fa12=fa1-fa2
+ 5105 aa(i)=aa(i)*c5*fa12*(2.d0/aqq)*bey
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,13
+c        *******************
+c
+c
+ 5200 continue
+      c5=c(mm,im)
+      do 5205 i=1,nt
+      gam01=gamma0+gamma1
+ 5205 aa(i)=aa(i)*c5*gam01*(-1.d0)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,13
+c        *******************
+c
+c
+ 5300 continue
+      c5=c(mm,im)
+      do 5305 i=1,nt
+      aqq=-deltaq(i,1)
+      gam01=gamma0+gamma1
+      xga013= gamma0+(2.d0*gamma1)+gamma3
+      fa1=gam01*(aqq/2.d0)
+      fa2=3.d0*gamma2
+      fa3=yyoff*xga013
+      fa123=fa1-fa2-fa3
+ 5305 aa(i)=aa(i)*c5*fa123
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,14
+c        *******************
+c
+c
+ 5400 continue
+      c5=c(mm,im)
+      do 5405 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(c4+aqq)
+ 5405 aa(i)=aa(i)*c5*qf3*aqq/ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,15
+c        *******************
+c
+c
+ 5500 continue
+      c5=c(mm,im)
+      do 5505 i=1,nt
+      aqq=-deltaq(i,1)
+      gam01=gamma0+gamma1
+      sgam01=sgam0+sgam1
+      fa=gam01-(c4*sgam01)
+ 5505 aa(i)=aa(i)*c5*fa*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,15
+c        *******************
+c
+c
+ 5600 continue
+      c5=c(mm,im)
+      do 5605 i=1,nt
+      sgam24=sgam2+sgam4
+ 5605 aa(i)=aa(i)*c5*sgam24
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,15
+c        *******************
+c
+c
+ 5700 continue
+      c5=c(mm,im)
+      do 5705 i=1,nt
+      aqq=-deltaq(i,1)
+      gs02=(2.d0*gamma0)-(c4*sgam0)-sgam2
+      sgam24=sgam2+sgam4
+      fa=(2.d0*gamma2)-((4.d0*qf3)/3.d0)+(2.d0*c4*gs02)
+     1   +((aqq/4.d0)*sgam24)+(((aqq/4.d0)-4.d0*yyoff)*
+     2    ((c4*sgam0)+(c4*sgam1)+sgam2+sgam4-gamma0-gamma1))
+ 5705 aa(i)=aa(i)*c5*fa
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,15
+c        *******************
+c
+c
+ 5800 continue
+      c5=c(mm,im)
+      do 5805 i=1,nt
+      aqq=-deltaq(i,1)
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sgam24=sgam2+sgam4
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=gamma0+(2.d0*gamma1)+gamma3-(c4*sga013)-(4.d0*sgam24)
+     1   +(((aqq/8.d0)-(2.d0*yyoff))*sg0135)
+ 5805 aa(i)=aa(i)*c5*fa1*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,15
+c        *******************
+c
+c
+ 5900 continue
+      c5=c(mm,im)
+      do 5905 i=1,nt
+      aqq=-deltaq(i,1)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sgam24=sgam2+sgam4
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=gamma0+(2.d0*gamma1)+gamma3-(c4*sga013)-(4.d0*sgam24)
+     1   +(((aqq/8.d0)-(2.d0*yyoff))*sg0135)
+ 5905 aa(i)=aa(i)*c5*fa1*(2.d0/aqq)*aay
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,15
+c        *******************
+c
+c
+ 6000 continue
+      c5=c(mm,im)
+      do 6005 i=1,nt
+      aqq=-deltaq(i,1)
+      bey=(aqq/2.d0)-yyoff
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sgam24=sgam2+sgam4
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=gamma0+(2.d0*gamma1)+gamma3-(c4*sga013)-(4.d0*sgam24)
+     1   +(((aqq/8.d0)-(2.d0*yyoff))*sg0135)
+ 6005 aa(i)=aa(i)*c5*fa1*(2.d0/aqq)*bey
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6100 continue
+      c5=c(mm,im)
+      do 6105 i=1,nt
+      sgam24=sgam2+sgam4
+ 6105 aa(i)=aa(i)*c5*sgam24
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6200 continue
+      c5=c(mm,im)
+      do 6205 i=1,nt
+      aqq=-deltaq(i,1)
+      c4q=(2.d0*c4)+aqq
+      fa1=(2.d0*gamma2)-(c4q*sgam2)-(aqq*sgam4)
+ 6205 aa(i)=aa(i)*c5*fa1
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6300 continue
+      c5=c(mm,im)
+      do 6305 i=1,nt
+      aqq=-deltaq(i,1)
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=gamma0+(2.d0*gamma1)+gamma3-(c4*sga013)-((aqq/2.d0)*sg0135)
+ 6305 aa(i)=aa(i)*c5*fa1*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6400 continue
+      c5=c(mm,im)
+      do 6405 i=1,nt
+      aqq=-deltaq(i,1)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=gamma0+(2.d0*gamma1)+gamma3-(c4*sga013)-((aqq/2.d0)*sg0135)
+ 6405 aa(i)=aa(i)*c5*fa1*(2.d0/aqq)*aay
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6500 continue
+      c5=c(mm,im)
+      do 6505 i=1,nt
+      aqq=-deltaq(i,1)
+      bey=(aqq/2.d0)-yyoff
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=gamma0+(2.d0*gamma1)+gamma3-(c4*sga013)-((aqq/2.d0)*sg0135)
+ 6505 aa(i)=aa(i)*c5*fa1*(2.d0/aqq)*bey
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6600 continue
+      c5=c(mm,im)
+      do 6605 i=1,nt
+      aqq=-deltaq(i,1)
+      sg01= gamma0 + gamma1
+      c4s=(c4*sg01)-gamma1
+      c4b= (c4*sgam0)-(2.d0*gamma0)
+      fa=((2.d0*qf3)/3.d0)+(c4*c4b)+((aqq/2.d0)*c4s)
+ 6605 aa(i)=aa(i)*c5*fa
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6700 continue
+      c5=c(mm,im)
+      do 6705 i=1,nt
+      aqq=-deltaq(i,1)
+      sg01= gamma0 + gamma1
+      c4g=(c4*sg01)+sgam2+sgam4-gamma0-gamma1
+      fa=(((4.d0*yyoff)+(aqq/2.d0))*c4g)+(2.d0*qf3)-(3.d0*gamma2)
+     1  +(3.d0*c4*(sgam2+(c4*sgam0)-(2.d0*gamma2)))
+ 6705 aa(i)=aa(i)*c5*fa
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6800 continue
+      c5=c(mm,im)
+      do 6805 i=1,nt
+      aqq=-deltaq(i,1)
+      sg24=sgam2+sgam4
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=(((3.d0/2.d0)*c4*sga013)-gamma0-(2.d0*gamma1)-gamma3)
+     1    +(4.d0*sg24)+(((2.d0*yyoff)+(aqq/4.d0))*sg0135)
+ 6805 aa(i)=aa(i)*c5*fa1*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 6900 continue
+      c5=c(mm,im)
+      do 6905 i=1,nt
+      aqq=-deltaq(i,1)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      sg24=sgam2+sgam4
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=(((3.d0/2.d0)*c4*sga013)-gamma0-(2.d0*gamma1)-gamma3)
+     1    +(4.d0*sg24)+(((2.d0*yyoff)+(aqq/4.d0))*sg0135)
+ 6905 aa(i)=aa(i)*c5*fa1*(2.d0/aqq)*aay
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,16
+c        *******************
+c
+c
+ 7000 continue
+      c5=c(mm,im)
+      do 7005 i=1,nt
+      aqq=-deltaq(i,1)
+      bey=(aqq/2.d0)-yyoff
+      sg24=sgam2+sgam4
+      sga013= sgam0+(2.d0*sgam1)+sgam3
+      sg0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      fa1=(((3.d0/2.d0)*c4*sga013)-gamma0-(2.d0*gamma1)-gamma3)
+     1    +(4.d0*sg24)+(((2.d0*yyoff)+(aqq/4.d0))*sg0135)
+ 7005 aa(i)=aa(i)*c5*fa1*(2.d0/aqq)*bey
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,17
+c        *******************
+c
+c
+ 7100 continue
+      c5=c(mm,im)
+      do 7105 i=1,nt
+      aqq=-deltaq(i,1)
+      g013=gamma0+(2.d0*gamma1)+gamma3
+      ca= (13.d0*gamma2)-(c4*gamma1)+(3.d0*yyoff*g013)
+ 7105 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,18
+c        *******************
+c
+c
+ 7200 continue
+      c5=c(mm,im)
+      do 7205 i=1,nt
+      aqq=-deltaq(i,1)
+      c4q=(2.d0*c4)+aqq
+      g01=gint0(i)+(2.d0*gint1(i))
+      ca= (yyoff-(aqq/4.d0))*((c4q*g01)-(2.d0*gamma0)-(2.d0*gamma1))
+ 7205 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,18
+c        *******************
+c
+c
+ 7300 continue
+      c5=c(mm,im)
+      do 7305 i=1,nt
+      aqq=-deltaq(i,1)
+ 7305 aa(i)=aa(i)*c5*aqq*gint2(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,18
+c        *******************
+c
+c
+ 7400 continue
+      c5=c(mm,im)
+      do 7405 i=1,nt
+ 7405 aa(i)=aa(i)*c5*gint2(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,18
+c        *******************
+c
+c
+ 7500 continue
+      c5=c(mm,im)
+      do 7505 i=1,nt
+      g013=gint0(i)+(4.d0*gint1(i))+(4.d0*gint3(i))
+ 7505 aa(i)=aa(i)*c5*g013
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,18
+c        *******************
+c
+c
+ 7600 continue
+      c5=c(mm,im)
+      do 7605 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((((c4+aqq)/2.d0)-yyoff)*gint0(i))+((c4+((3.d0*aqq)/2.d0)
+     1   -(4.d0*yyoff))*gint1(i))-gint2(i)+((aqq-(4.d0*yyoff))*gint3(i))
+     2   -((1.d0/2.d0)*(gamma0+gamma1))
+ 7605 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,19
+c        *******************
+c
+c
+ 7700 continue
+      c5=c(mm,im)
+      do 7705 i=1,nt
+      aqq=-deltaq(i,1)
+      g013=gamma0+(2.d0*gamma1)+gamma3
+      ca= (c4*gamma1)-gamma2+(yyoff*g013)
+ 7705 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,20
+c        *******************
+c
+c
+ 7800 continue
+      c5=c(mm,im)
+      do 7805 i=1,nt
+      aqq=-deltaq(i,1)
+      g13=gamma1+gamma3
+      c4q=(2.d0*c4)+aqq
+      ca=(6.d0*gamma2)+(2.d0*yyoff*g13)
+     1   +(c4q*((yyoff*gint0(i))-gints(i)))
+ 7805 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,20
+c        *******************
+c
+c
+ 7900 continue
+      c5=c(mm,im)
+      do 7905 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=gints(i)-gint1s(i)+(yyoff*(gint1(i)-gint0(i)))
+ 7905 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,21
+c        *******************
+c
+c
+ 8000 continue
+      c5=c(mm,im)
+      do 8005 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(qf3*aqq)/(c4+aqq)
+ 8005 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,22
+c        *******************
+c
+c
+ 8100 continue
+      c5=c(mm,im)
+      do 8105 i=1,nt
+      aqq=-deltaq(i,1)
+      g013=(11.d0*gamma0)+(6.d0*gamma1)-(5.d0*gamma3)
+      xg13=(2.d0*gamma0)+(5.d0*gamma1)+(3.d0*gamma3)
+      ca=(yyoff*g013)-(aqq*xg13)+(3.d0*c4*gamma1)-(41.d0*gamma2)
+ 8105 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,22
+c        *******************
+c
+c
+ 8200 continue
+      c5=c(mm,im)
+      do 8205 i=1,nt
+      aqq=-deltaq(i,1)
+      g013= gamma0+(2.d0*gamma1)+gamma3
+ 8205 aa(i)=aa(i)*c5*aqq*g013*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,22
+c        *******************
+c
+c
+ 8300 continue
+      c5=c(mm,im)
+      do 8305 i=1,nt
+      aqq=-deltaq(i,1)
+      g013= gamma0+(2.d0*gamma1)+gamma3
+      aay=aqq*(yyoff-(aqq/4.d0))
+ 8305 aa(i)=aa(i)*c5*aqq*g013*(2.d0/aqq)*aay
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,22
+c        *******************
+c
+c
+ 8400 continue
+      c5=c(mm,im)
+      do 8405 i=1,nt
+      aqq=-deltaq(i,1)
+      bey=(aqq/2.d0)-yyoff
+      g013= gamma0+(2.d0*gamma1)+gamma3
+ 8405 aa(i)=aa(i)*c5*aqq*g013*(2.d0/aqq)*bey
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,23
+c        *******************
+c
+c
+ 8500 continue
+      c5=c(mm,im)
+      do 8505 i=1,nt
+      aqq=-deltaq(i,1)
+      c4q= (2.d0*c4)+aqq
+      g01= gamma0+gamma1
+      ca=(4.d0*qf3)-(3.d0*aqq*g01)
+     1  +(3.d0*c4*((c4q*gint0(i))-(4.d0*gamma0)))
+ 8505 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,23
+c        *******************
+c
+c
+ 8600 continue
+      c5=c(mm,im)
+      do 8605 i=1,nt
+      aqq=-deltaq(i,1)
+      cyq=c4+(2.d0*yyoff)+aqq
+      pq=(4.d0*yyoff)-aqq
+      g13= gint1(i)+gint3(i)
+      ca=(2.d0*gint2(i))-gamma0+(2.d0*gamma1)+(cyq*gint0(i))
+     1   +(2.d0*pq*g13)-(4.d0*c4*gint1(i))
+ 8605 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,23
+c        *******************
+c
+c
+ 8700 continue
+      c5=c(mm,im)
+      do 8705 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=4.d0*(gint0(i)+(2.d0*gint1(i)))
+ 8705 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,23
+c        *******************
+c
+c
+ 8800 continue
+      c5=c(mm,im)
+      do 8805 i=1,nt
+      aqq=-deltaq(i,1)
+      pq=(8.d0*yyoff)-(3.d0*aqq)
+      g01=gamma0+gamma1
+      c4q=(2.d0*c4)+aqq
+      q4p=aqq-(4.d0*yyoff)
+      xg01= gint0(i)+(2.d0*gint1(i))
+      ca=(pq*g01)+((4.d0*qf3)/3.d0)-(4.d0*c4*gamma0)
+     1   +(c4q*((q4p*xg01)+(c4*gint0(i))))
+ 8805 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,23
+c        *******************
+c
+c
+ 8900 continue
+      c5=c(mm,im)
+      do 8905 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(6.d0*gint2(i))-gamma0+((c4+(6.d0*yyoff)-aqq)*gint0(i))
+     1   +(6.d0*((4.d0*yyoff)-aqq)*(gint1(i)+gint3(i)))
+ 8905 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c        function for vmed,24
+c        *******************
+c
+c
+ 9000 continue
+      c5=c(mm,im)
+      do 9005 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(qf3*aqq*aqq)/(c4+aqq)**2
+ 9005 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,25
+c        *******************
+c
+c
+ 9100 continue
+      c5=c(mm,im)
+      do 9105 i=1,nt
+      aqq=-deltaq(i,1)
+      g24=gamma2+gamma4
+      g0135=gamma0+(3.d0*gamma1)+(3.d0*gamma3)+gamma5
+      sg02=(c4*sgam0)-sgam2-(2.d0*gamma0)
+      g10=gamma1-gamma0
+      s013=sgam0-sgam1-(2.d0*sgam3)
+      pq=(8.d0*yyoff)-aqq
+      s01= sgam0+sgam1
+      s0135=sgam0+(3.d0*sgam1)+(3.d0*sgam3)+sgam5
+      ca=((aqq/(c4+aqq))*((3.d0*g24)-(qf3/3.d0)+((aqq/4.d0)*g0135)))
+     1   +((8.d0*qf3)/3.d0)+(4.d0*gamma2)+(4.d0*c4*sg02)
+     2   +(aqq*(gamma3+(g10/2.d0)-(2.d0*sgam2)-(2.d0*sgam4)
+     3   +((c4/2.d0)*s013)))+(pq*((c4*s01)-gamma0-gamma1-sgam2-sgam4
+     4   -((aqq/4.d0)*s0135)))
+ 9105 aa(i)=aa(i)*c5*ca
+        mi=mi+1
+        mm=mm+1
+        go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,26
+c        *******************
+c
+c
+ 9200 continue
+      c5=c(mm,im)
+      do 9205 i=1,nt
+      aqq=-deltaq(i,1)
+      sg123=(6.d0*gamma1)-(4.d0*sgam2)-(aqq*sgam3)
+      ca=(((3.d0*aqq)/4.d0)*sg123)-(4.d0*qf3)
+     1   +((9.d0/4.d0)*(2.d0*c4+aqq)*((4.d0*gamma0)-(aqq*sgam1)))
+     2   -((9.d0/4.d0)*((2.d0*c4+aqq)**2)*(sgam0+gint0(i)))
+     3   +((3.d0/8.d0)*((2.d0*c4+aqq)**3)*xkint0(i))
+ 9205 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,26
+
+c        *******************
+c
+c
+ 9300 continue
+      c5=c(mm,im)
+      do 9305 i=1,nt
+      aqq=-deltaq(i,1)
+      c4q=c4+(aqq/2.d0)
+      s13=sgam1+sgam3 
+      sg01=sgam0+sgam1+gint0(i)+(2.d0*gint1(i))
+      xk01= xkint0(i)+(2.d0*xkint1(i))
+      ca=gamma0+gamma1-((aqq/4.d0)*s13)-(c4q*sg01)
+     1   +((1.d0/8.d0)*((2.d0*c4+aqq)**2)*xk01)
+ 9305 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,26
+
+c        *******************
+c
+c
+ 9400 continue
+      c5=c(mm,im)
+      do 9405 i=1,nt
+      aqq=-deltaq(i,1)
+      c4q=c4+(aqq/2.d0)
+      s13=sgam1+sgam3 
+      sg01=sgam0+sgam1+gint0(i)+(2.d0*gint1(i))
+      xk01= xkint0(i)+(2.d0*xkint1(i))
+      ca=gamma0+gamma1-((aqq/4.d0)*s13)-(c4q*sg01)
+     1   +((1.d0/8.d0)*((2.d0*c4+aqq)**2)*xk01)
+ 9405 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,26
+c        *******************
+c
+c
+ 9500 continue
+      c5=c(mm,im)
+      do 9505 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((2.d0*c4+aqq)*xkint2(i))-(2.d0*sgam2)-(2.d0*gint2(i))
+ 9505 aa(i)=aa(i)*c5*ca*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,26
+c        *******************
+c
+c
+ 9600 continue
+      c5=c(mm,im)
+      do 9605 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((2.d0*c4+aqq)*xkint2(i))-(2.d0*sgam2)-(2.d0*gint2(i))
+ 9605 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,26
+c        *******************
+c
+c
+ 9700 continue
+      c5=c(mm,im)
+      do 9705 i=1,nt
+      aqq=-deltaq(i,1)
+      xk013= xkint0(i)+(4.d0*xkint1(i))+(4.d0*xkint3(i))
+      sg013= sgam0+(2.d0*sgam1)+sgam3+gint0(i)+(4.d0*gint1(i))
+     1      +(4.d0*gint3(i))
+      ca=((2.d0*c4+aqq)*xk013)-(2.d0*sg013)
+ 9705 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,27
+c        *******************
+c
+c
+ 9800 continue
+      c5=c(mm,im)
+      do 9805 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(aqq*(3.d0*gamma1-2.d0*sgam2-(aqq*sgam3/2.d0)+10.d0*sgam4
+     1   +2.d0*yyoff*sgam5))-((8.d0*qf3)/3.d0)-(8.d0*(3.d0*gamma2
+     2   +yyoff*gamma3))+((3.d0*c4+(3.d0*aqq/2.d0)+2.d0*yyoff)
+     3   *(4.d0*gamma0-aqq*sgam1))-((2.d0*c4+aqq)*(3.d0*c4+
+     4   (3.d0*aqq/2.d0)+4.d0*yyoff)*(sgam0+gint0(i)))+(4.d0*
+     5   (2.d0*c4+aqq)*(3.d0*sgam2+yyoff*sgam3+gints(i)))+
+     6   (((2.d0*c4+aqq)**2)*(((2.d0*c4+aqq+4.d0*yyoff)*
+     7   (xkint0(i)/4.d0))-xkints(i)))
+ 9805 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c        function for vmed,27
+c        *******************
+c
+c
+ 9900 continue
+      c5=c(mm,im)
+      do 9905 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((aqq/2.d0)*(sgam1+sgam3))+((2.d0*c4+2.d0*yyoff+aqq)
+     1  *(sgam0+sgam1+gint0(i)+(2.d0*gint1(i))))-(2.d0
+     2  *(gamma0+gamma1+(3.d0*sgam2)+(yyoff*sgam3)+(5.d0*sgam4)
+     3  +(yyoff*sgam5)+gints(i)+gint1s(i)))+((2.d0*c4+aqq)*(xkints(i)
+     4  +(2.d0*xkint1s(i))-((2.d0*c4+aqq+4.d0*yyoff)*((xkint0(i)
+     5  +(2.d0*xkint1(i)))/4.d0))))
+ 9905 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,27
+c        *******************
+c
+c
+10000 continue
+      c5=c(mm,im)
+      do 10005 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((aqq/2.d0)*(sgam1+sgam3))+((2.d0*c4+2.d0*yyoff+aqq)
+     1  *(sgam0+sgam1+gint0(i)+(2.d0*gint1(i))))-(2.d0
+     2  *(gamma0+gamma1+(3.d0*sgam2)+(yyoff*sgam3)+(5.d0*sgam4)
+     3  +(yyoff*sgam5)+gints(i)+gint1s(i)))+((2.d0*c4+aqq)*(xkints(i)
+     4  +(2.d0*xkint1s(i))-((2.d0*c4+aqq+4.d0*yyoff)*((xkint0(i)
+     5  +(2.d0*xkint1(i)))/4.d0))))
+10005 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,27
+c        *******************
+c
+c
+10100 continue
+      c5=c(mm,im)
+      do 10105 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((2.d0*c4+aqq+4.d0*yyoff)*(xkint2(i)/2.d0))
+     1  -(2.d0*xkint2s(i))-sgam2-gint2(i)
+10105 aa(i)=aa(i)*c5*ca*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,27
+c        *******************
+c
+c
+10200 continue
+      c5=c(mm,im)
+      do 10205 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((2.d0*c4+aqq+4.d0*yyoff)*(xkint2(i)/2.d0))
+     1  -(2.d0*xkint2s(i))-sgam2-gint2(i)
+10205 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,27
+c        *******************
+c
+c
+10300 continue
+      c5=c(mm,im)
+      do 10305 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((2.d0*c4+aqq+4.d0*yyoff)*((xkint0(i)/2.d0)+(2.d0*xkint1(i))
+     1  +(2.d0*xkint3(i))))-sgam0-(2.d0*sgam1)-sgam3-gint0(i)
+     2  -(4.d0*gint1(i))-(4.d0*gint3(i))-(2.d0*(xkints(i)
+     3  +(4.d0*xkint1s(i))+(4.d0*xkint3s(i))))
+10305 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,28
+c        *******************
+c
+c
+10400 continue
+      c5=c(mm,im)
+      do 10405 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(3.d0*gamma2)+(5.d0*gamma4)+(yyoff*(gamma3+gamma5)) 
+10405 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,29
+c        *******************
+c
+c
+10500 continue
+      c5=c(mm,im)
+      do 10505 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(6.d0*gamma2)+(2.d0*yyoff*gamma3)
+     1    -((2.d0*c4+aqq)*gints(i))
+10505 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,29
+c        *******************
+c
+c
+10600 continue
+      c5=c(mm,im)
+      do 10605 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(gints(i)+2.d0*gint1s(i))
+10605 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+10700 continue
+      c5=c(mm,im)
+      do 10705 i=1,nt
+      aqq=-deltaq(i,1)     
+      ca=(bige1*(((6.d0/5.d0)*qfq)+(2.d0*yyoff)-(3.d0*aqq)))
+     1   +(3.d0*bige2*(((3.d0/5.d0)*qfq)+yyoff))
+     2   +(3.d0*bige3*(((3.d0/5.d0)*qfq)+yyoff))
+     3   +(9.d0*bige4*(((3.d0/5.d0)*qfq)+yyoff))
+     4   +(3.d0*bige5*(aqq-((2.d0/5.d0)*qfq)-((2.d0/3.d0)*yyoff)))
+     5   -9.d0*bige6*((qfq/5.d0)+(yyoff/3.d0))
+     6   +bige9*((aqq/2.d0)-((3.d0/5.d0)*qfq)-yyoff)
+     7   +bige10*(((3.d0*aqq)/2.d0)-((9.d0/5.d0)*qfq)-(3.d0*yyoff))
+10705 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+10800 continue
+      c5=c(mm,im)
+      do 10805 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(bige2*(((3.d0/5.d0)*qfq)+yyoff-aqq))
+     1  +(3.d0*bige6*((aqq/3.d0)-(yyoff/3.d0)-(qfq/5.d0)))
+10805 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+10900 continue
+      c5=c(mm,im)
+      do 10905 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(bige3*(((3.d0/5.d0)*qfq)+yyoff-aqq))
+     1   +(3.d0*bige5*(((2.d0/5.d0)*qfq)+(2.d0*yyoff)-(aqq/2.d0)))
+     2   +(3.d0*bige6*((qfq/5.d0)+(3.d0*yyoff)-((3.d0*aqq)/4.d0)))
+10905 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+11000 continue
+      c5=c(mm,im)
+      do 11005 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(bige4*(((3.d0/5.d0)*qfq)+yyoff-aqq))
+     1  +(3.d0*bige6*((qfq/5.d0)+yyoff-(aqq/4.d0)))
+11005 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+11100 continue
+      c5=c(mm,im)
+      do 11105 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((6.d0*bige5)+(9.d0*bige6))/aqq
+11105 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+11200 continue
+      c5=c(mm,im)
+      do 11205 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(3.d0*bige6)/aqq
+11205 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+11300 continue
+      c5=c(mm,im)
+      do 11305 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=bige9-((6.d0*bige5*yyoff)/aqq)
+     1 +(bige6*((9.d0/2.d0)-((9.d0*yyoff)/aqq)))
+11305 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+11400 continue
+      c5=c(mm,im)
+      do 11405 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=bige10-(bige6*((3.d0/2.d0)+((3.d0*yyoff)/aqq)))
+11405 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,30
+c        *******************
+c
+c
+11500 continue
+      c5=c(mm,im)
+      do 11505 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(9.d0/2.d0*bige8)-(7.d0/2.d0*bige7)-(bige9/2.d0)
+     1  -((3.d0*bige10)/2.d0)
+11505 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,31
+c        *******************
+c
+c
+11600 continue
+      c5=c(mm,im)
+      do 11605 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(rc4*qf3*(aqq+((5.d0*c4)/6.d0)))/(c4+aqq)
+11605 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c        function for vmed,32
+c        *******************
+c
+c
+11700 continue
+      c5=c(mm,im)
+      do 11705 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(rc4*((2.d0*qf3)-(8.d0*gamma2)-(2.d0*c4*(gamma0+gamma1))
+     1   +(aqq*(gamma0-gamma1-2.d0*gamma3))))+bigs0+bjint1(i)+bjint2(i)
+11705 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,33
+c        *******************
+c
+c
+11800 continue
+      c5=c(mm,im)
+      do 11805 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      capA=(1.d0/(2.d0*aq))*datan(aq/(2.d0*rc4))
+      g01=gamma0-gamma1
+      ca=((rc4+(2.d0*c4+aqq)*capA)*(8.d0*qf3+6.d0*aqq*g01))
+     1   -(6.d0*c4*gamma0*(3.d0*rc4+(2.d0*c4+aqq)*capA))
+     2   +(3.d0*(2.d0*c4+aqq)*(c4r3-2.d0*rc4*aqq
+     3   -(2.d0*c4r4+5.d0*c4*aqq+2.d0*aqq*aqq)*capA)*gint0(i))
+11805 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,33
+c        *******************
+c
+c
+11900 continue
+      c5=c(mm,im)
+      do 11905 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      capA=(1.d0/(2.d0*aq))*datan(aq/(2.d0*rc4))
+      g01=gamma0+gamma1
+      ca=(2.d0*(rc4+(2.d0*c4+aqq)*capA)*g01)
+     1   +((2.d0*rc4*aqq-c4r3+(2.d0*c4r4+5.d0*c4*aqq+2.d0*aqq*aqq)*capA)
+     2   *(gint0(i)+2.d0*gint1(i)))
+11905 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,33
+c        *******************
+c
+c
+12000 continue
+      c5=c(mm,im)
+      do 12005 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      capA=(1.d0/(2.d0*aq))*datan(aq/(2.d0*rc4))
+      ca=(rc4+(4.d0*c4+aqq)*capA)*(2.d0*gamma0+2.d0*gamma1
+     1   -(2.d0*c4+aqq)*(gint0(i)+2.d0*gint1(i)))
+12005 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,33
+c        *******************
+c
+c
+12100 continue
+      c5=c(mm,im)
+      do 12105 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      capA=(1.d0/(2.d0*aq))*datan(aq/(2.d0*rc4))
+      ca=(rc4+(4.d0*c4+aqq)*capA)*gint2(i)
+12105 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,33
+c        *******************
+c
+c
+12200 continue
+      c5=c(mm,im)
+      do 12205 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      capA=(1.d0/(2.d0*aq))*datan(aq/(2.d0*rc4))
+      ca=(rc4+(4.d0*c4+aqq)*capA)*gint2(i)
+12205 aa(i)=aa(i)*c5*ca*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,33
+c        *******************
+c
+c
+12300 continue
+      c5=c(mm,im)
+      do 12305 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      capA=(1.d0/(2.d0*aq))*datan(aq/(2.d0*rc4))
+      ca=(rc4+(4.d0*c4+aqq)*capA)*(gint0(i)+4.d0*gint1(i)+4.d0*gint3(i))
+12305 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,34
+c        *******************
+c
+c
+12400 continue
+      c5=c(mm,im)
+      do 12405 i=1,nt
+      aqq=-deltaq(i,1)
+12405 aa(i)=aa(i)*c5*rc4*qf3
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+12500 continue
+      c5=c(mm,im)
+      do 12505 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ef3=fj3(aq,ga2,c4)
+      ef2=fj2(aq,ga2,c4)
+      ef1=fj1(aq,ga2,c4)
+      gt3=gamma0+2.d0*gamma1+gamma3
+      gt1=gamma0+gamma1
+      ca=(ef3*(2.d0*c4*gamma0-((4.d0*qf3)/3.d0)))
+     1   -(aqq*ef1*(2.d0*gamma2+((aqq*gt3)/2.d0)))+(ef2*aqq*gt1)
+c       write(*,*) ca, ef1
+12505 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+12600 continue
+      c5=c(mm,im)
+      do 12605 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ef7=fj7(aq,ga2,c4)
+      ef6=fj6(aq,ga2,c4)
+      gt1=gamma0+gamma1
+      ca=(ef7*(2.d0*c4*gamma0-((4.d0*qf3)/3.d0)))+(aqq*gt1*ef6)
+c      write(*,*) ca, ef7, ef6
+12605 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+12700 continue
+      c5=c(mm,im)
+      do 12705 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      gt3=gamma0+2.d0*gamma1+gamma3
+      ef5=fj5(aq,ga2,c4)
+c      write(*,*) gt3*ef5*((-2.d0)/aqq), ef5
+12705 aa(i)=aa(i)*c5*gt3*ef5*((-2.d0)/aqq)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+12800 continue
+      c5=c(mm,im)
+      do 12805 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      gt3=gamma0+2.d0*gamma1+gamma3
+      ef5=fj5(aq,ga2,c4)
+      t1=(-2.d0)*3.d0*gamma2*ef5
+      t2=(-3.d0)*gt3*ef5*(2.d0/aqq)*aay
+      ca=t1+t2
+12805 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+12900 continue
+      c5=c(mm,im)
+      do 12905 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      bey=(aqq/2.d0)-yyoff
+      gt3=gamma0+2.d0*gamma1+gamma3
+      ef5=fj5(aq,ga2,c4)
+      ef4=fj4(aq,ga2,c4)
+      t1=(-3.d0)*gt3*ef5*(2.d0/aqq)*bey
+      t2=2.d0*(-3.d0)*(gamma2+((aqq*gt3)/4.d0))*ef4
+      ca=t1+t2
+12905 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+13000 continue
+      c5=c(mm,im)
+      do 13005 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ef8=fj8(aq,ga2,c4)
+      gt1=gamma0+gamma1
+13005 aa(i)=aa(i)*c5*gt1*ef8
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+13100 continue
+      c5=c(mm,im)
+      do 13105 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ef8=fj8(aq,ga2,c4)
+      ef2=fj2(aq,ga2,c4)
+      ef1=fj1(aq,ga2,c4)
+      gt1=gamma0+gamma1
+      gt3=gamma0+2.d0*gamma1+gamma3
+      ca=(gt1*(2.d0*ef8-ef2))+(gt3*(aqq/2.d0)*ef1)
+13105 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+13200 continue
+      c5=c(mm,im)
+      do 13205 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ef6=fj6(aq,ga2,c4)
+      gt1=gamma0+gamma1
+13205 aa(i)=aa(i)*c5*gt1*ef6
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,35
+c        *******************
+c
+c
+13300 continue
+      c5=c(mm,im)
+      do 13305 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ef8=fj8(aq,ga2,c4)
+      gt1=gamma0+gamma1
+13305 aa(i)=aa(i)*c5*gt1*aqq*ef8
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,36
+c        *******************
+c
+c
+13400 continue
+      c5=c(mm,im)
+      do 13405 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=bigs1+ga2*bigs2+aqq*(bigs3+ga2*bigs4)
+13405 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+13500 continue
+      c5=c(mm,im)
+      do 13505 i=1,nt
+      aqq=-deltaq(i,1)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      t1=(2.d0*biint22(i)-2.d0*biint32(i)-bhint12(i)-bitil12(i))
+      t2=(2.d0/aqq)*aay*(biint23(i)-biint33(i)
+     1   -((bhint13(i)+bitil13(i))/2.d0))
+      ca=t1+t2
+13505 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+13600 continue
+      c5=c(mm,im)
+      do 13605 i=1,nt
+      aqq=-deltaq(i,1)
+      bey=(aqq/2.d0)-yyoff
+      t1=((bhint11(i)+bitil14(i))/2.d0)-biint24(i)-biint35(i)
+      t2=(2.d0/aqq)*bey*(biint23(i)-biint33(i)
+     1   -((bhint13(i)+bitil13(i))/2.d0))      
+      ca=t1+t2
+c      write(*,*) biint23(i), biint33(i), bhint13(i), bitil13(i), t2,ca
+13605 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+13700 continue
+      c5=c(mm,im)
+      do 13705 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((-2.d0)/aqq)*(biint23(i)-biint33(i)
+     1   -((bhint13(i)+bitil13(i))/2.d0))
+13705 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+13800 continue
+      c5=c(mm,im)
+      do 13805 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=(2.d0*c4*biint50(i))-(2.d0*bhint50(i))
+     1   +((aqq*(bhint41(i)+bitil44(i)))/2.d0)
+     2   -(yyoff*(bhint43(i)+bitil43(i)))-(3.d0*bhint42(i))
+     3   -(3.d0*bitil42(i))
+13805 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+13900 continue
+      c5=c(mm,im)
+      do 13905 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((bhint41(i)+bitil41(i))/2.d0)+2.d0*biint81(i)
+13905 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+14000 continue
+      c5=c(mm,im)
+      do 14005 i=1,nt
+      aqq=-deltaq(i,1)
+      aay=aqq*(yyoff-(aqq/4.d0))
+      t1=2.d0*(biint62(i)-biint72(i)-4.d0*biint82(i)
+     1  -2.d0*yyoff*biint83(i)+aqq*biint84(i))
+      t2=(2.d0/aqq)*aay*(biint63(i)-biint73(i)+2.d0*biint83(i))
+      ca=t1+t2
+14005 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+14100 continue
+      c5=c(mm,im)
+      do 14105 i=1,nt
+      aqq=-deltaq(i,1)
+      bey=(aqq/2.d0)-yyoff
+      t1=biint64(i)+biint75(i)+2.d0*biint84(i)
+      t2=(2.d0/aqq)*bey*(biint63(i)-biint73(i)+2.d0*biint83(i))
+      ca=t2-t1
+14105 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,37
+c        *******************
+c
+c
+14200 continue
+      c5=c(mm,im)
+      do 14205 i=1,nt
+      aqq=-deltaq(i,1)
+      ca=((-2.d0)/aqq)*(biint63(i)-biint73(i)+2.d0*biint83(i))
+14205 aa(i)=aa(i)*c5*ca
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,38
+c        *******************
+c
+c
+14300 continue
+      c5=c(mm,im)
+      do 14305 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ca=((rc4*(9.d0*c4+2.d0*aqq))/(4.d0*c4+aqq))
+     1   +(((3.d0*c4+aqq)/aq)*datan(aq/(2.d0*rc4)))
+14305 aa(i)=aa(i)*c5*ca*qf3
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,39
+c        *******************
+c
+c
+14400 continue
+      c5=c(mm,im)
+      do 14405 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      aq4=aqq*aqq
+      ca=(((23.d0*c4r3*(2.d0*c4+aqq))+3.d0*rc4*aq4)/((4.d0*c4+aqq)**2))
+     1   +(((3.d0*c4+aqq)/aq)*datan(aq/(2.d0*rc4)))
+14405 aa(i)=aa(i)*c5*ca*qf3
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,39
+c        *******************
+c
+c
+14500 continue
+      c5=c(mm,im)
+      do 14505 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ca=(3.d0/(2.d0*aqq))*((c4r3/((4.d0*c4+aqq)))
+     1   +(((aqq-c4)/(2.d0*aq))*datan(aq/(2.d0*rc4))))
+14505 aa(i)=aa(i)*c5*ca*qf3
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,39
+c        *******************
+c
+c
+14600 continue
+      c5=c(mm,im)
+      do 14605 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      ca=(3.d0/(2.d0*aqq))*((c4r3/((4.d0*c4+aqq)))
+     1   +(((aqq-c4)/(2.d0*aq))*datan(aq/(2.d0*rc4))))
+14605 aa(i)=aa(i)*c5*ca*qf3*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c        function for vmed,40
+c        *******************
+c
+c
+14700 continue
+      c5=c(mm,im)
+      do 14705 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 335 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((((((c4*(8.d0*yyoff-aqq))
+     1        +((4.d0*yyoff+aqq)*(yyoff-ak2)))*(xlam/yyoff))
+     2        +(((aqq-4.d0*yyoff)*ak1)/yyoff)+(2.d0*(2.d0*c4+aqq)
+     3    *(ak2-yyoff-c4)*xome))*gat1*ak1)+((16.d0*qf3)/3.d0))*wk(ik))
+        
+  335 continue
+      
+14705 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,41
+c        *******************
+c
+c
+14800 continue
+      c5=c(mm,im)
+      do 14805 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 375 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((((bb+aqq*ak2)*xome)-((c4+ak2+yyoff)*xlam))
+     1         /(4.d0*yyoff-aqq))*gat1*ak1*wk(ik))
+        
+  375 continue
+      
+14805 aa(i)=aa(i)*c5*csint(i)*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,41
+c        *******************
+c
+c
+14900 continue
+      c5=c(mm,im)
+      do 14905 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 395 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((((bb+aqq*ak2)*xome)-((c4+ak2+yyoff)*xlam))
+     1         /(4.d0*yyoff-aqq))*gat1*ak1*wk(ik))
+        
+  395 continue
+      
+14905 aa(i)=aa(i)*c5*csint(i)*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,41
+c        *******************
+c
+c
+15000 continue
+      c5=c(mm,im)
+      do 15005 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 385 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((((bb+aqq*ak2)*xome)-((c4+ak2+yyoff)*xlam))
+     1         /(4.d0*yyoff-aqq))*gat1*ak1*wk(ik))
+        
+  385 continue
+      
+15005 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,41
+c        *******************
+c
+c
+15100 continue
+      c5=c(mm,im)
+      do 15105 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 355 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((((bb+aqq*ak2)*xome)-((c4+ak2+yyoff)*xlam))
+     1         /(4.d0*yyoff-aqq))*gat1*ak1*wk(ik))
+        
+  355 continue
+      
+15105 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,42
+c        *******************
+c
+c
+15200 continue
+      c5=c(mm,im)
+      do 15205 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 955 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((ak1*gat1)/(4.d0*yyoff-aqq))*(((-ak1)/
+     1   yyoff)+((((c4+ak2+yyoff)/yyoff)+((2.d0*(4.d0*c4+4.d0
+     2   *ak2+aqq))/(4.d0*yyoff-aqq)))*xlam)+(2.d0*(c4+3.d0*ak2+yyoff
+     3  -((4.d0*((c4+ak2+yyoff)**2))/(4.d0*yyoff-aqq)))*xome))*wk(ik))
+        
+  955 continue
+      
+15205 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,42
+c        *******************
+c
+c
+15300 continue
+      c5=c(mm,im)
+      do 15305 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 957 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((ak1*gat1)/(4.d0*yyoff-aqq))*(((-ak1)
+     1        /yyoff)+((((c4+ak2+yyoff)/yyoff)+((2.d0*(4.d0*c4+4.d0
+     2        *ak2+aqq))/(4.d0*yyoff-aqq)))*xlam)+(2.d0*(c4+3.d0*ak2
+     3        +yyoff-((4.d0*((c4+ak2+yyoff)**2))/(4.d0*yyoff-aqq)))
+     4        *xome))*wk(ik))
+        
+  957 continue
+      
+15305 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,43
+c        *******************
+c
+c
+15400 continue
+      c5=c(mm,im)
+      do 15405 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 657 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+  
+      gat2=((c4r3/3.d0)*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))
+     1    +((qf*(qfq-3.d0*c4))/9.d0)+((qf/(24.d0*ak2))*((qfq+c4)**2))
+     2    -((qf*ak2)/24.d0)+(((ak2-qfq-c4)/(96.d0*ak3))
+     3    *(((c4+qfq)**2)+ak4+(2.d0*ak2*(5.d0*c4-qfq)))
+     4    *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+ 
+      gat3=(qf/8.d0)+(qf3/(3.d0*ak2))-((qf/(8.d0*ak4))*((qfq+c4)**2))
+     1     +(((c4+qfq-ak2)/(32.d0*ak5))*(c4+((qf+ak1)**2))
+     2     *(c4+((qf-ak1)**2))
+     3     *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((((3.d0*ak1*gat2)+(ak3*gat3))
+     1         *(((2.d0*c4+aqq)*xome)-(2.d0*xlam)))
+     2         +(ak1*gat1*(((ak1*(aqq-(4.d0*yyoff)))/(4.d0*yyoff))
+     3         +((2.d0*c4+yyoff-ak2+(aqq/4.d0)-((aqq*(c4+ak2))
+     4         /(4.d0*yyoff)))*xlam)+((c4+(aqq/2.d0))*(ak2-yyoff-c4)
+     5         *xome)))+((8.d0*qf3)/3.d0))*wk(ik))
+        
+  657 continue
+      
+15405 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,44
+c        *******************
+c
+c
+15500 continue
+      c5=c(mm,im)
+      do 15505 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 757 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+
+      gat2=((c4r3/3.d0)*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))
+     1    +((qf*(qfq-3.d0*c4))/9.d0)+((qf/(24.d0*ak2))*((qfq+c4)**2))
+     2    -((qf*ak2)/24.d0)+(((ak2-qfq-c4)/(96.d0*ak3))
+     3    *(((c4+qfq)**2)+ak4+(2.d0*ak2*(5.d0*c4-qfq)))
+     4    *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+ 
+      gat3=(qf/8.d0)+(qf3/(3.d0*ak2))-((qf/(8.d0*ak4))*((qfq+c4)**2))
+     1     +(((c4+qfq-ak2)/(32.d0*ak5))*(c4+((qf+ak1)**2))
+     2     *(c4+((qf-ak1)**2))
+     3     *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+    
+       csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1         *((gat1*(((yyoff+ak2)*xlam)-(((c4*(yyoff+ak2))+aqq*ak2
+     2         +((yyoff-ak2)**2))*xome)))+(4.d0*gat2
+     3         *(((c4+ak2-yyoff+(aqq/2.d0))*xome)-xlam))
+     4         +((gat3/2.d0)*(((((c4+yyoff)**2)+3.d0*ak4
+     5         +(2.d0*ak2*(2.d0*c4-2.d0*yyoff+aqq)))*xome)
+     6         -((c4+3.d0*ak2+yyoff)*xlam))))*wk(ik))
+     
+       
+  757 continue
+      
+15505 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,45
+c        *******************
+c
+c
+15600 continue
+      c5=c(mm,im)
+      do 15605 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 337 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((4.d0*ak1*sgat2
+     1   *(((ak1*(4.d0*yyoff-aqq))/yyoff)
+     2   +(((((c4+ak1)*aqq)/yyoff)-8.d0*c4-3.d0*aqq)*xlam)
+     3   +(((2.d0*c4+aqq)**2)*xome)))
+     4   +(((ak1*gat3)/2.d0)
+     5   *(((ak1*((2.d0*yyoff*(7.d0*ak2-2.d0*c4-yyoff))
+     6   +(aqq*(c4-3.d0*ak2))))/yyoff)
+     7   +((2.d0*y4off+(yyoff*(8.d0*c4-4.d0*ak2+aqq))
+     8   +(6.d0*c4*(c4-4.d0*ak2))+(2.d0*ak2*(ak2-4.d0*aqq))
+     9   +((aqq*(3.d0*ak4+2.d0*c4*ak2-c4r4))/yyoff))*xlam)
+     1   +((2.d0*c4+aqq)*((2.d0*ak2*(3.d0*c4+yyoff+aqq))-ak4
+     2   -((c4+yyoff)**2))*xome)))-((16.d0*qf3)/3.d0))*wk(ik))
+        
+  337 continue
+      
+15605 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,46
+c        *******************
+c
+c
+15700 continue
+      c5=c(mm,im)
+      do 15705 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 397 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1     *((sgat2*((((4.d0*(yyoff-ak2-2.d0*c4))-3.d0*aqq
+     2  +((aqq*(c4+ak2))/yyoff))*xlam)+((ak1*(4.d0*yyoff-aqq))/yyoff)
+     3  +((2.d0*c4+aqq)*(2.d0*c4+2.d0*ak2-2.d0*yyoff+aqq)*xome)))
+     4  +(sgat3*(((ak1*(4.d0*yyoff-aqq)*(c4+ak2+yyoff))/(4.d0*yyoff))
+     5  +(((yyoff*(2.d0*ak2-4.d0*c4-((3.d0*aqq)/4.d0)-yyoff))
+     6  +((aqq*((c4+ak2)**2))/(4.d0*yyoff))-ak4
+     7  -(ak2*(4.d0*c4+((3.d0*aqq)/2.d0)))
+     8  -(c4*(3.d0*c4+(aqq/2.d0))))*xlam)
+     9  +((2.d0*c4+aqq)*(ak4+(ak2*(2.d0*c4-2.d0*yyoff+aqq))
+     1  +((c4+yyoff)**2))*xome))))*wk(ik))
+        
+  397 continue
+      
+15705 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,47
+c        *******************
+c
+c
+15800 continue
+      c5=c(mm,im)
+      do 15805 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 597 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1     *((sgat2*((((4.d0*(2.d0*c4+ak2-yyoff))+3.d0*aqq
+     2  -((aqq*(c4+ak2))/yyoff))*xlam)+((ak1*(aqq-4.d0*yyoff))/yyoff)
+     3  +((2.d0*c4+aqq)*(2.d0*yyoff-2.d0*c4-2.d0*ak2-aqq)*xome)))
+     4  +(sgat3*(((ak1*(4.d0*yyoff-aqq)*(c4-ak2))/(2.d0*yyoff))
+     5  +((c4+yyoff-ak2)*(yyoff-ak2-3.d0*c4-(aqq/2.d0)
+     6  +((aqq*(c4+ak2))/(2.d0*yyoff)))*xlam)
+     7 +(((c4+yyoff-ak2)**2)*(c4+ak2-yyoff+(aqq/2.d0))*xome))))*wk(ik))
+        
+  597 continue
+      
+15805 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,48
+c        *******************
+c
+c
+15900 continue
+      c5=c(mm,im)
+      do 15905 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 577 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1  *((4.d0*sgat2*(((c4+ak2+yyoff)*xlam)-((bb+aqq*ak2)*xome)))
+     2  +(sgat3*(((ak1*(4.d0*yyoff-aqq)*(c4+ak2+yyoff))/(8.d0*yyoff))
+     3  +(((yyoff*(ak2-3.d0*c4+(aqq/8.d0)-((3.d0*yyoff)/2.d0)))
+     4  +(ak4/2.d0)-c4*ak2-((3.d0*c4r4)/2.d0)+((aqq*(c4-ak2))/4.d0)
+     5  +((aqq*((c4+ak2)**2))/(8.d0*yyoff)))*xlam)
+     6  +((c4-ak2+yyoff)*(bb+aqq*ak2)*xome))))*wk(ik))
+        
+  577 continue
+      
+15905 aa(i)=aa(i)*c5*csint(i)*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,48
+c        *******************
+c
+c
+16000 continue
+      c5=c(mm,im)
+      do 16005 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 576 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1  *((4.d0*sgat2*(((c4+ak2+yyoff)*xlam)-((bb+aqq*ak2)*xome)))
+     2  +(sgat3*(((ak1*(4.d0*yyoff-aqq)*(c4+ak2+yyoff))/(8.d0*yyoff))
+     3  +(((yyoff*(ak2-3.d0*c4+(aqq/8.d0)-((3.d0*yyoff)/2.d0)))
+     4  +(ak4/2.d0)-c4*ak2-((3.d0*c4r4)/2.d0)+((aqq*(c4-ak2))/4.d0)
+     5  +((aqq*((c4+ak2)**2))/(8.d0*yyoff)))*xlam)
+     6  +((c4-ak2+yyoff)*(bb+aqq*ak2)*xome))))*wk(ik))
+
+        
+  576 continue
+      
+16005 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,49
+c        *******************
+c
+c
+16100 continue
+      c5=c(mm,im)
+      do 16105 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 876 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1     *((4.d0*sgat2*((ak1/yyoff)+((1.d0-((c4+ak2)/yyoff)
+     2     -((2.d0*(4.d0*c4+4.d0*ak2+aqq))/(4.d0*yyoff-aqq)))*xlam)
+     3     +((((8.d0*((c4+ak2+yyoff)**2))/(4.d0*yyoff-aqq))-8.d0*ak2
+     4     -4.d0*c4-aqq)*xome)))+(sgat3*(((ak1*(ak2-c4-yyoff))/yyoff)
+     5     +((((c4r4-ak4)/yyoff)+2.d0*ak2-yyoff+((8.d0*(((c4+yyoff)**2)
+     6     -ak4))/(4.d0*yyoff-aqq)))*xlam)+(2.d0*(ak2-c4-yyoff)
+     7     *(((4.d0*((c4+ak2+yyoff)**2))/(4.d0*yyoff-aqq))
+     8     -3.d0*ak2-c4-yyoff)*xome))))*wk(ik))
+        
+  876 continue
+      
+16105 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,50
+c        *******************
+c
+c
+16200 continue
+      c5=c(mm,im)
+      do 16205 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 596 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+
+
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+  
+      gat2=((c4r3/3.d0)*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))
+     1    +((qf*(qfq-3.d0*c4))/9.d0)+((qf/(24.d0*ak2))*((qfq+c4)**2))
+     2    -((qf*ak2)/24.d0)+(((ak2-qfq-c4)/(96.d0*ak3))
+     3    *(((c4+qfq)**2)+ak4+(2.d0*ak2*(5.d0*c4-qfq)))
+     4    *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+ 
+      gat3=(qf/8.d0)+(qf3/(3.d0*ak2))-((qf/(8.d0*ak4))*((qfq+c4)**2))
+     1     +(((c4+qfq-ak2)/(32.d0*ak5))*(c4+((qf+ak1)**2))
+     2     *(c4+((qf-ak1)**2))
+     3     *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1     *((12.d0*gat2*(((c4+ak2+yyoff)*xome)-xlam))
+     2     +(gat3*(((ak1*(aqq-4.d0*yyoff))/(2.d0*yyoff))
+     3     +(((3.d0*(3.d0*c4+ak2+3.d0*yyoff))-(aqq/2.d0)
+     4     -((aqq*(c4+ak2))/(2.d0*yyoff)))*xlam)
+     5     -(((4.d0*ak2*(2.d0*c4+aqq-2.d0*yyoff))+ak4
+     6     +(7.d0*((c4+yyoff)**2)))*xome))))*wk(ik))
+        
+  596 continue
+      
+16205 aa(i)=aa(i)*c5*csint(i)*aqq
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c        function for vmed,50
+c        *******************
+c
+c
+16300 continue
+      c5=c(mm,im)
+      do 16305 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 594 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+  
+      gat2=((c4r3/3.d0)*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))
+     1    +((qf*(qfq-3.d0*c4))/9.d0)+((qf/(24.d0*ak2))*((qfq+c4)**2))
+     2    -((qf*ak2)/24.d0)+(((ak2-qfq-c4)/(96.d0*ak3))
+     3    *(((c4+qfq)**2)+ak4+(2.d0*ak2*(5.d0*c4-qfq)))
+     4    *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+ 
+      gat3=(qf/8.d0)+(qf3/(3.d0*ak2))-((qf/(8.d0*ak4))*((qfq+c4)**2))
+     1     +(((c4+qfq-ak2)/(32.d0*ak5))*(c4+((qf+ak1)**2))
+     2     *(c4+((qf-ak1)**2))
+     3     *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((ak1/(4.d0*yyoff-aqq))
+     1     *((12.d0*gat2*(((c4+ak2+yyoff)*xome)-xlam))
+     2     +(gat3*(((ak1*(aqq-4.d0*yyoff))/(2.d0*yyoff))
+     3     +(((3.d0*(3.d0*c4+ak2+3.d0*yyoff))-(aqq/2.d0)
+     4     -((aqq*(c4+ak2))/(2.d0*yyoff)))*xlam)
+     5     -(((4.d0*ak2*(2.d0*c4+aqq-2.d0*yyoff))+ak4
+     6     +(7.d0*((c4+yyoff)**2)))*xome))))*wk(ik))
+        
+  594 continue
+      
+16305 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,51
+c        *******************
+c
+c
+16400 continue
+      c5=c(mm,im)
+      do 16405 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 396 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+  
+      gat2=((c4r3/3.d0)*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))
+     1    +((qf*(qfq-3.d0*c4))/9.d0)+((qf/(24.d0*ak2))*((qfq+c4)**2))
+     2    -((qf*ak2)/24.d0)+(((ak2-qfq-c4)/(96.d0*ak3))
+     3    *(((c4+qfq)**2)+ak4+(2.d0*ak2*(5.d0*c4-qfq)))
+     4    *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+ 
+      gat3=(qf/8.d0)+(qf3/(3.d0*ak2))-((qf/(8.d0*ak4))*((qfq+c4)**2))
+     1     +(((c4+qfq-ak2)/(32.d0*ak5))*(c4+((qf+ak1)**2))
+     2     *(c4+((qf-ak1)**2))
+     3     *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+((1.d0/(4.d0*yyoff-aqq))
+     1 *((3.d0*gat2*((((ak1/yyoff)+((8.d0*ak1)/(4.d0*yyoff-aqq)))*xlam)
+     2 -(1.d0/yyoff)+(((c4+ak2+yyoff)*(((c4*(aqq-4.d0*yyoff))
+     3 /(yyoff*bb))+((4.d0*c4+aqq)/(bb+aqq*ak2))))/aqq)
+     4 -(((((4.d0*c4+aqq)*(c4+ak2+yyoff))/(bb+aqq*ak2))
+     5 +((4.d0*(2.d0*c4+2.d0*ak2-2.d0*yyoff+aqq))/(4.d0*yyoff-aqq)))
+     6 *ak1*xome)))+(ak1*gat3*((ak1/aqq)-(2.d0*((c4/yyoff)
+     7 +((7.d0*c4+7.d0*yyoff+ak2)/(4.d0*yyoff-aqq)))*xlam)
+     8 +((ak1*(c4+ak2+yyoff)*(((4.d0*c4*(aqq-4.d0*yyoff))/(yyoff*bb))
+     9 +((3.d0*(4.d0*c4+aqq))/(bb+aqq*ak2))))/(2.d0*aqq))
+     1 +((((c4r4-((ak2-yyoff)**2))/aqq)+((2.d0*(ak4+(8.d0*ak2
+     2 *(c4+yyoff))+(7.d0*((c4+yyoff)**2))))/(4.d0*yyoff-aqq))
+     3 -((3.d0*c4+7.d0*ak2+3.d0*yyoff)/2.d0)
+     4 -((3.d0*ak2*(2.d0*c4+(aqq/2.d0))*(c4+ak2+yyoff))
+     5 /(bb+aqq*ak2)))*xome))))*wk(ik))
+
+        
+  396 continue
+      
+16405 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,52
+c        *******************
+c
+c
+16500 continue
+      c5=c(mm,im)
+      do 16505 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      aq4=aqq*aqq
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 896 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+  
+      gat2=((c4r3/3.d0)*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))
+     1    +((qf*(qfq-3.d0*c4))/9.d0)+((qf/(24.d0*ak2))*((qfq+c4)**2))
+     2    -((qf*ak2)/24.d0)+(((ak2-qfq-c4)/(96.d0*ak3))
+     3    *(((c4+qfq)**2)+ak4+(2.d0*ak2*(5.d0*c4-qfq)))
+     4    *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+ 
+      gat3=(qf/8.d0)+(qf3/(3.d0*ak2))-((qf/(8.d0*ak4))*((qfq+c4)**2))
+     1     +(((c4+qfq-ak2)/(32.d0*ak5))*(c4+((qf+ak1)**2))
+     2     *(c4+((qf-ak1)**2))
+     3     *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((3.d0*gat2+ak2*gat3)*((aqq/yyoff)
+     1   -((((2.d0*c4+aqq)**2)*(c4+ak2+yyoff))/(aqq*(bb+aqq*ak2)))
+     2   +((c4*((4.d0*(c4+yyoff-ak2))+(((4.d0*c4*yyoff-aq4)
+     3   *(c4+ak2+yyoff))/(yyoff*aqq))))/bb)+((ak1*(8.d0*yyoff-aqq)
+     4   *xlam)/yyoff)+(((((2.d0*c4+aqq)*(c4+ak2+yyoff))/(bb+aqq*ak2))
+     5   -4.d0)*(2.d0*c4+aqq)*ak1*xome))-((16.d0*qf3)/3.d0))*wk(ik))
+ 
+
+
+       
+  896 continue
+      
+16505 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c        function for vmed,53
+c        *******************
+c
+c
+16600 continue
+      c5=c(mm,im)
+      do 16605 i=1,nt
+      aqq=-deltaq(i,1)
+      aq=dsqrt(aqq)
+      
+      nqf=32 
+      q3f=3.d0*qf
+      call gseteff (0.d0,q3f,nqf,ak,wk)
+      
+      csint(i)=0.d0
+
+      do 836 ik=1,nqf
+      
+      ak1=ak(ik)
+      ak2=ak1*ak1
+      ak3=ak2*ak1
+      ak4=ak3*ak1
+      ak5=ak4*ak1
+
+       bb=(c4+((ak1+yoff)**2))*(c4+((ak1-yoff)**2)) 
+       rbb=dsqrt(bb)
+       qbb=bb+(aqq*ak2)       
+       rqbb=dsqrt(qbb)
+      
+      sgat2=((qf*(3.d0*ak2-qfq-c4))/(8.d0*ak2))
+     1 -((rc4*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))/2.d0)
+     2 +(((((c4*qfq)**2)-3.d0*ak4+(2.d0*ak2*(3.d0*c4+qfq)))
+     3 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak3))
+
+      sgat3=((qf*(3.d0*c4+3.d0*qfq-ak2))/(8.d0*ak4))
+     1 +(((ak4+(2.d0*ak2*(qfq-c4))-(3.d0*((c4+qfq)**2)))
+     2 *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))/(32.d0*ak5))
+
+      gat1=((qf*(c4+qfq+ak2))/(4.d0*ak2))-((1.d0/(16.d0*ak3))
+     1     *(c4+((qf+ak1)**2))*(c4+((qf-ak1)**2))
+     2     *dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2))))
+  
+      gat2=((c4r3/3.d0)*(datan((qf+ak1)/rc4)+datan((qf-ak1)/rc4)))
+     1    +((qf*(qfq-3.d0*c4))/9.d0)+((qf/(24.d0*ak2))*((qfq+c4)**2))
+     2    -((qf*ak2)/24.d0)+(((ak2-qfq-c4)/(96.d0*ak3))
+     3    *(((c4+qfq)**2)+ak4+(2.d0*ak2*(5.d0*c4-qfq)))
+     4    *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+ 
+      gat3=(qf/8.d0)+(qf3/(3.d0*ak2))-((qf/(8.d0*ak4))*((qfq+c4)**2))
+     1     +(((c4+qfq-ak2)/(32.d0*ak5))*(c4+((qf+ak1)**2))
+     2     *(c4+((qf-ak1)**2))
+     3     *(dlog((c4+((qf+ak1)**2))/(c4+((qf-ak1)**2)))))
+     
+      xlam=(dlog((c4+((ak1+yoff)**2))/(c4+((ak1-yoff)**2))))
+     1      /(4.d0*yoff)
+     
+      xome=(1.d0/(aq*rqbb))*(dlog((aq*ak1+rqbb)/rbb))
+
+      csint(i)=csint(i)+(((4.d0*gat2*((((ak1/yyoff)+((4.d0*ak1)
+     1   /(4.d0*yyoff-aqq)))*xlam)-(1.d0/yyoff)+((c4*(1.d0+((c4+ak2)
+     2   /yyoff)+((2.d0*(ak2-c4-yyoff))/aqq)))/bb)+(((2.d0*c4+aqq)
+     3   *(c4+yyoff-ak2))/(aqq*(bb+aqq*ak2)))+((2.d0
+     4   -((4.d0*(c4+ak2+yyoff))/(4.d0*yyoff-aqq))+(((2.d0*c4+aqq)
+     5   *(ak2-c4-yyoff))/(bb+aqq*ak2)))*ak1*xome)))+(ak1*gat3
+     6   *((ak1*(c4+yyoff-ak2)*(((2.d0*c4+aqq)/(aqq*(bb+aqq*ak2)))
+     7   +((((c4+ak2)/yyoff)-((4.d0*c4)/aqq)-1.d0)/bb)))
+     8   +((((ak2-c4-yyoff)/yyoff)+((2.d0*(3.d0*ak2+c4+yyoff))
+     9   /(4.d0*yyoff-aqq)))*xlam)+((((c4+yyoff-ak2)*(((2.d0*c4)/aqq)
+     1   -(((2.d0*c4+aqq)*ak2)/(bb+aqq*ak2))))+(((c4+yyoff+3.d0*ak2)
+     2   *(2.d0*yyoff-2.d0*c4-2.d0*ak2-aqq))/(4.d0*yyoff-aqq)))
+     3   *xome))))*wk(ik))
+        
+  836 continue
+      
+16605 aa(i)=aa(i)*c5*csint(i)
+      mi=mi+1
+      mm=mm+1
+      go to 5999
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+c
+ 9002 write (kwrite,19002) ityp
+
+
+19002 format (1h ////' error in effaa:  cut/fun typ',i10  ,'  does not e
+     1xist in this program.'/' execution terminated.'////)
+      stop
+c
+c
+c
+c
+c
+ 8010 return
+      end
+      
+      
+      
+c    fj-functions for j=1-8
+
+     
+       function fj1(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj1=((rc4/s2)*(1.d0-2.d0*ga2))-((ga2*rc4)/(4.d0*c4+s2))
+     1      +((1.d0+ga2+((4.d0*c4*(2.d0*ga2-1.d0))/s2))*capA)
+       end function
+
+       function fj2(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj2=(2.d0*rc4)+((4.d0*c4+2.d0*s2)*capA)
+       end function
+
+ccc fj2=fj7=0.5*fj6
+
+
+       function fj3(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj3=(rc4*(1.d0-3.d0*ga2))+((4.d0*c4*(1.d0-2.d0*ga2)
+     1      +s2*(1.d0-3.d0*ga2))*capA)
+       end function
+
+
+
+
+       function fj4(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj4=(2.d0*ga2*s2*capA)/(-1.d0*s2)
+       end function
+
+ccc fj5=-s2*fj4
+  
+
+       function fj5(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj5=2.d0*ga2*s2*capA
+       end function
+
+
+       function fj6(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj6=((2.d0*rc4)+((4.d0*c4+2.d0*s2)*capA))*2.d0
+       end function
+
+
+       function fj7(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj7=(2.d0*rc4)+((4.d0*c4+2.d0*s2)*capA)
+       end function
+
+    
+        function fj8(s,ga2,c4)
+        implicit real*8(a-h,o-z)
+        rc4=dsqrt(c4)
+        s2=s*s
+        capA=(1.d0/(2.d0*s))*datan(s/(2.d0*rc4))
+        fj8=(-1.d0*(rc4+((4.d0*c4+s2)*capA)))/2.d0
+       end function
+  
+  
+      subroutine legpeff (pj,pjm1,x,j)
+c
+c
+c        subroutine legp   computes the legendre polynominals
+c
+      real*8 pj,pjm1,x,a,b
+c
+c
+c
+c        compute legendre polynom for j equals zero
+c
+c
+      if (j.gt.0) go to 1
+      pj=1.d0
+      pjm1=0.d0
+      if (j.lt.0) pj=0.d0
+      return
+c
+c
+c
+c        compute legendre polynoms for j equals one
+c
+c
+c
+    1 pj=x
+      pjm1=1.d0
+      if (j.eq.1) return
+c
+c
+c
+c        compute legendre polynom for j greater or equal two
+c
+c
+c
+      do 2 i=2,j
+      a=x*pj
+      b=a-pjm1
+      pjm1=pj
+    2 pj=-b/dfloat(i)+b+a
+c
+c
+      return  
+      end
+      subroutine gseteff (ax,bx,n,z,w)
+c
+c
+c        this code has been obtained from the CERN computer library
+c        in the year of the lord 1972.
+c
+c
+      implicit real*8 (a-h,o-z)
+c
+c     n-point gauss zeros and weights for the interval (ax,bx) are
+c           stored in  arrays z and w respectively.
+c
+      dimension     a(273),x(273),ktab(96)
+      dimension z(1),w(1)
+c
+c-----table of initial subscripts for n=2(1)16(4)96
+      data ktab(2)/1/
+      data ktab(3)/2/
+      data ktab(4)/4/
+      data ktab(5)/6/
+      data ktab(6)/9/
+      data ktab(7)/12/
+      data ktab(8)/16/
+      data ktab(9)/20/
+      data ktab(10)/25/
+      data ktab(11)/30/
+      data ktab(12)/36/
+      data ktab(13)/42/
+      data ktab(14)/49/
+      data ktab(15)/56/
+      data ktab(16)/64/
+      data ktab(20)/72/
+      data ktab(24)/82/
+      data ktab(28)/82/
+      data ktab(32)/94/
+      data ktab(36)/94/
+      data ktab(40)/110/
+      data ktab(44)/110/
+      data ktab(48)/130/
+      data ktab(52)/130/
+      data ktab(56)/130/
+      data ktab(60)/130/
+      data ktab(64)/154/
+      data ktab(68)/154/
+      data ktab(72)/154/
+      data ktab(76)/154/
+      data ktab(80)/186/
+      data ktab(84)/186/
+      data ktab(88)/186/
+      data ktab(92)/186/
+      data ktab(96)/226/
+c
+c-----table of abscissae (x) and weights (a) for interval (-1,+1).
+c
+c**** n=2
+      data x(1)/0.577350269189626  d0/, a(1)/1.000000000000000  d0/
+c**** n=3
+      data x(2)/0.774596669241483  d0/, a(2)/0.555555555555556  d0/
+      data x(3)/0.000000000000000  d0/, a(3)/0.888888888888889  d0/
+c**** n=4
+      data x(4)/0.861136311594053  d0/, a(4)/0.347854845137454  d0/
+      data x(5)/0.339981043584856  d0/, a(5)/0.652145154862546  d0/
+c**** n=5
+      data x(6)/0.906179845938664  d0/, a(6)/0.236926885056189  d0/
+      data x(7)/0.538469310105683  d0/, a(7)/0.478628670499366  d0/
+      data x(8)/0.000000000000000  d0/, a(8)/0.568888888888889  d0/
+c**** n=6
+      data x(9)/0.932469514203152  d0/, a(9)/0.171324492379170  d0/
+      data x(10)/0.661209386466265 d0/, a(10)/0.360761573048139 d0/
+      data x(11)/0.238619186083197 d0/, a(11)/0.467913934572691 d0/
+c**** n=7
+      data x(12)/0.949107912342759 d0/, a(12)/0.129484966168870 d0/
+      data x(13)/0.741531185599394 d0/, a(13)/0.279705391489277 d0/
+      data x(14)/0.405845151377397 d0/, a(14)/0.381830050505119 d0/
+      data x(15)/0.000000000000000 d0/, a(15)/0.417959183673469 d0/
+c**** n=8
+      data x(16)/0.960289856497536 d0/, a(16)/0.101228536290376 d0/
+      data x(17)/0.796666477413627 d0/, a(17)/0.222381034453374 d0/
+      data x(18)/0.525532409916329 d0/, a(18)/0.313706645877887 d0/
+      data x(19)/0.183434642495650 d0/, a(19)/0.362683783378362 d0/
+c**** n=9
+      data x(20)/0.968160239507626 d0/, a(20)/0.081274388361574 d0/
+      data x(21)/0.836031107326636 d0/, a(21)/0.180648160694857 d0/
+      data x(22)/0.613371432700590 d0/, a(22)/0.260610696402935 d0/
+      data x(23)/0.324253423403809 d0/, a(23)/0.312347077040003 d0/
+      data x(24)/0.000000000000000 d0/, a(24)/0.330239355001260 d0/
+c**** n=10
+      data x(25)/0.973906528517172 d0/, a(25)/0.066671344308688 d0/
+      data x(26)/0.865063366688985 d0/, a(26)/0.149451349150581 d0/
+      data x(27)/0.679409568299024 d0/, a(27)/0.219086362515982 d0/
+      data x(28)/0.433395394129247 d0/, a(28)/0.269266719309996 d0/
+      data x(29)/0.148874338981631 d0/, a(29)/0.295524224714753 d0/
+c**** n=11
+      data x(30)/0.978228658146057 d0/, a(30)/0.055668567116174 d0/
+      data x(31)/0.887062599768095 d0/, a(31)/0.125580369464905 d0/
+      data x(32)/0.730152005574049 d0/, a(32)/0.186290210927734 d0/
+      data x(33)/0.519096129206812 d0/, a(33)/0.233193764591990 d0/
+      data x(34)/0.269543155952345 d0/, a(34)/0.262804544510247 d0/
+      data x(35)/0.000000000000000 d0/, a(35)/0.272925086777901 d0/
+c**** n=12
+      data x(36)/0.981560634246719 d0/, a(36)/0.047175336386512 d0/
+      data x(37)/0.904117256370475 d0/, a(37)/0.106939325995318 d0/
+      data x(38)/0.769902674194305 d0/, a(38)/0.160078328543346 d0/
+      data x(39)/0.587317954286617 d0/, a(39)/0.203167426723066 d0/
+      data x(40)/0.367831498998180 d0/, a(40)/0.233492536538355 d0/
+      data x(41)/0.125233408511469 d0/, a(41)/0.249147045813403 d0/
+c**** n=13
+      data x(42)/0.984183054718588 d0/, a(42)/0.040484004765316 d0/
+      data x(43)/0.917598399222978 d0/, a(43)/0.092121499837728 d0/
+      data x(44)/0.801578090733310 d0/, a(44)/0.138873510219787 d0/
+      data x(45)/0.642349339440340 d0/, a(45)/0.178145980761946 d0/
+      data x(46)/0.448492751036447 d0/, a(46)/0.207816047536889 d0/
+      data x(47)/0.230458315955135 d0/, a(47)/0.226283180262897 d0/
+      data x(48)/0.000000000000000 d0/, a(48)/0.232551553230874 d0/
+c**** n=14
+      data x(49)/0.986283808696812 d0/, a(49)/0.035119460331752 d0/
+      data x(50)/0.928434883663574 d0/, a(50)/0.080158087159760 d0/
+      data x(51)/0.827201315069765 d0/, a(51)/0.121518570687903 d0/
+      data x(52)/0.687292904811685 d0/, a(52)/0.157203167158194 d0/
+      data x(53)/0.515248636358154 d0/, a(53)/0.185538397477938 d0/
+      data x(54)/0.319112368927890 d0/, a(54)/0.205198463721296 d0/
+      data x(55)/0.108054948707344 d0/, a(55)/0.215263853463158 d0/
+c**** n=15
+      data x(56)/0.987992518020485 d0/, a(56)/0.030753241996117 d0/
+      data x(57)/0.937273392400706 d0/, a(57)/0.070366047488108 d0/
+      data x(58)/0.848206583410427 d0/, a(58)/0.107159220467172 d0/
+      data x(59)/0.724417731360170 d0/, a(59)/0.139570677926154 d0/
+      data x(60)/0.570972172608539 d0/, a(60)/0.166269205816994 d0/
+      data x(61)/0.394151347077563 d0/, a(61)/0.186161000015562 d0/
+      data x(62)/0.201194093997435 d0/, a(62)/0.198431485327111 d0/
+      data x(63)/0.000000000000000 d0/, a(63)/0.202578241925561 d0/
+c**** n=16
+      data x(64)/0.989400934991650 d0/, a(64)/0.027152459411754 d0/
+      data x(65)/0.944575023073233 d0/, a(65)/0.062253523938648 d0/
+      data x(66)/0.865631202387832 d0/, a(66)/0.095158511682493 d0/
+      data x(67)/0.755404408355003 d0/, a(67)/0.124628971255534 d0/
+      data x(68)/0.617876244402644 d0/, a(68)/0.149595988816577 d0/
+      data x(69)/0.458016777657227 d0/, a(69)/0.169156519395003 d0/
+      data x(70)/0.281603550779259 d0/, a(70)/0.182603415044924 d0/
+      data x(71)/0.095012509837637 d0/, a(71)/0.189450610455069 d0/
+c**** n=20
+      data x(72)/0.993128599185094 d0/, a(72)/0.017614007139152 d0/
+      data x(73)/0.963971927277913 d0/, a(73)/0.040601429800386 d0/
+      data x(74)/0.912234428251325 d0/, a(74)/0.062672048334109 d0/
+      data x(75)/0.839116971822218 d0/, a(75)/0.083276741576704 d0/
+      data x(76)/0.746331906460150 d0/, a(76)/0.101930119817240 d0/
+      data x(77)/0.636053680726515 d0/, a(77)/0.118194531961518 d0/
+      data x(78)/0.510867001950827 d0/, a(78)/0.131688638449176 d0/
+      data x(79)/0.373706088715419 d0/, a(79)/0.142096109318382 d0/
+      data x(80)/0.227785851141645 d0/, a(80)/0.149172986472603 d0/
+      data x(81)/0.076526521133497 d0/, a(81)/0.152753387130725 d0/
+c**** n=24
+      data x(82)/0.995187219997021 d0/, a(82)/0.012341229799987 d0/
+      data x(83)/0.974728555971309 d0/, a(83)/0.028531388628933 d0/
+      data x(84)/0.938274552002732 d0/, a(84)/0.044277438817419 d0/
+      data x(85)/0.886415527004401 d0/, a(85)/0.059298584915436 d0/
+      data x(86)/0.820001985973902 d0/, a(86)/0.073346481411080 d0/
+      data x(87)/0.740124191578554 d0/, a(87)/0.086190161531953 d0/
+      data x(88)/0.648093651936975 d0/, a(88)/0.097618652104113 d0/
+      data x(89)/0.545421471388839 d0/, a(89)/0.107444270115965 d0/
+      data x(90)/0.433793507626045 d0/, a(90)/0.115505668053725 d0/
+      data x(91)/0.315042679696163 d0/, a(91)/0.121670472927803 d0/
+      data x(92)/0.191118867473616 d0/, a(92)/0.125837456346828 d0/
+      data x(93)/0.064056892862605 d0/, a(93)/0.127938195346752 d0/
+c**** n=32
+      data x(94)/0.997263861849481 d0/, a(94)/0.007018610009470 d0/
+      data x(95)/0.985611511545268 d0/, a(95)/0.016274394730905 d0/
+      data x(96)/0.964762255587506 d0/, a(96)/0.025392065309262 d0/
+      data x(97)/0.934906075937739 d0/, a(97)/0.034273862913021 d0/
+      data x(98)/0.896321155766052 d0/, a(98)/0.042835898022226 d0/
+      data x(99)/0.849367613732569 d0/, a(99)/0.050998059262376 d0/
+      data x(100)/0.794483795967942d0/, a(100)/0.058684093478535d0/
+      data x(101)/0.732182118740289d0/, a(101)/0.065822222776361d0/
+      data x(102)/0.663044266930215d0/, a(102)/0.072345794108848d0/
+      data x(103)/0.587715757240762d0/, a(103)/0.078193895787070d0/
+      data x(104)/0.506899908932229d0/, a(104)/0.083311924226946d0/
+      data x(105)/0.421351276130635d0/, a(105)/0.087652093004403d0/
+      data x(106)/0.331868602282127d0/, a(106)/0.091173878695763d0/
+      data x(107)/0.239287362252137d0/, a(107)/0.093844399080804d0/
+      data x(108)/0.144471961582796d0/, a(108)/0.095638720079274d0/
+      data x(109)/0.048307665687738d0/, a(109)/0.096540088514727d0/
+c**** n=40
+      data x(110)/0.998237709710559d0/, a(110)/0.004521277098533d0/
+      data x(111)/0.990726238699457d0/, a(111)/0.010498284531152d0/
+      data x(112)/0.977259949983774d0/, a(112)/0.016421058381907d0/
+      data x(113)/0.957916819213791d0/, a(113)/0.022245849194166d0/
+      data x(114)/0.932812808278676d0/, a(114)/0.027937006980023d0/
+      data x(115)/0.902098806968874d0/, a(115)/0.033460195282547d0/
+      data x(116)/0.865959503212259d0/, a(116)/0.038782167974472d0/
+      data x(117)/0.824612230833311d0/, a(117)/0.043870908185673d0/
+      data x(118)/0.778305651426519d0/, a(118)/0.048695807635072d0/
+      data x(119)/0.727318255189927d0/, a(119)/0.053227846983936d0/
+      data x(120)/0.671956684614179d0/, a(120)/0.057439769099391d0/
+      data x(121)/0.612553889667980d0/, a(121)/0.061306242492928d0/
+      data x(122)/0.549467125095128d0/, a(122)/0.064804013456601d0/
+      data x(123)/0.483075801686178d0/, a(123)/0.067912045815233d0/
+      data x(124)/0.413779204371605d0/, a(124)/0.070611647391286d0/
+      data x(125)/0.341994090825758d0/, a(125)/0.072886582395804d0/
+      data x(126)/0.268152185007253d0/, a(126)/0.074723169057968d0/
+      data x(127)/0.192697580701371d0/, a(127)/0.076110361900626d0/
+      data x(128)/0.116084070675255d0/, a(128)/0.077039818164247d0/
+      data x(129)/0.038772417506050d0/, a(129)/0.077505947978424d0/
+c**** n=48
+      data x(130)/0.998771007252426d0/, a(130)/0.003153346052305d0/
+      data x(131)/0.993530172266350d0/, a(131)/0.007327553901276d0/
+      data x(132)/0.984124583722826d0/, a(132)/0.011477234579234d0/
+      data x(133)/0.970591592546247d0/, a(133)/0.015579315722943d0/
+      data x(134)/0.952987703160430d0/, a(134)/0.019616160457355d0/
+      data x(135)/0.931386690706554d0/, a(135)/0.023570760839324d0/
+      data x(136)/0.905879136715569d0/, a(136)/0.027426509708356d0/
+      data x(137)/0.876572020274247d0/, a(137)/0.031167227832798d0/
+      data x(138)/0.843588261624393d0/, a(138)/0.034777222564770d0/
+      data x(139)/0.807066204029442d0/, a(139)/0.038241351065830d0/
+      data x(140)/0.767159032515740d0/, a(140)/0.041545082943464d0/
+      data x(141)/0.724034130923814d0/, a(141)/0.044674560856694d0/
+      data x(142)/0.677872379632663d0/, a(142)/0.047616658492490d0/
+      data x(143)/0.628867396776513d0/, a(143)/0.050359035553854d0/
+      data x(144)/0.577224726083972d0/, a(144)/0.052890189485193d0/
+      data x(145)/0.523160974722233d0/, a(145)/0.055199503699984d0/
+      data x(146)/0.466902904750958d0/, a(146)/0.057277292100403d0/
+      data x(147)/0.408686481990716d0/, a(147)/0.059114839698395d0/
+      data x(148)/0.348755886292160d0/, a(148)/0.060704439165893d0/
+      data x(149)/0.287362487355455d0/, a(149)/0.062039423159892d0/
+      data x(150)/0.224763790394689d0/, a(150)/0.063114192286254d0/
+      data x(151)/0.161222356068891d0/, a(151)/0.063924238584648d0/
+      data x(152)/0.097004699209462d0/, a(152)/0.064466164435950d0/
+      data x(153)/0.032380170962869d0/, a(153)/0.064737696812683d0/
+c**** n=64
+      data x(154)/0.999305041735772d0/, a(154)/0.001783280721696d0/
+      data x(155)/0.996340116771955d0/, a(155)/0.004147033260562d0/
+      data x(156)/0.991013371476744d0/, a(156)/0.006504457968978d0/
+      data x(157)/0.983336253884625d0/, a(157)/0.008846759826363d0/
+      data x(158)/0.973326827789910d0/, a(158)/0.011168139460131d0/
+      data x(159)/0.961008799652053d0/, a(159)/0.013463047896718d0/
+      data x(160)/0.946411374858402d0/, a(160)/0.015726030476024d0/
+      data x(161)/0.929569172131939d0/, a(161)/0.017951715775697d0/
+      data x(162)/0.910522137078502d0/, a(162)/0.020134823153530d0/
+      data x(163)/0.889315445995114d0/, a(163)/0.022270173808383d0/
+      data x(164)/0.865999398154092d0/, a(164)/0.024352702568710d0/
+      data x(165)/0.840629296252580d0/, a(165)/0.026377469715054d0/
+      data x(166)/0.813265315122797d0/, a(166)/0.028339672614259d0/
+      data x(167)/0.783972358943341d0/, a(167)/0.030234657072402d0/
+      data x(168)/0.752819907260531d0/, a(168)/0.032057928354851d0/
+      data x(169)/0.719881850171610d0/, a(169)/0.033805161837141d0/
+      data x(170)/0.685236313054233d0/, a(170)/0.035472213256882d0/
+      data x(171)/0.648965471254657d0/, a(171)/0.037055128540240d0/
+      data x(172)/0.611155355172393d0/, a(172)/0.038550153178615d0/
+      data x(173)/0.571895646202634d0/, a(173)/0.039953741132720d0/
+      data x(174)/0.531279464019894d0/, a(174)/0.041262563242623d0/
+      data x(175)/0.489403145707052d0/, a(175)/0.042473515123653d0/
+      data x(176)/0.446366017253464d0/, a(176)/0.043583724529323d0/
+      data x(177)/0.402270157963991d0/, a(177)/0.044590558163756d0/
+      data x(178)/0.357220158337668d0/, a(178)/0.045491627927418d0/
+      data x(179)/0.311322871990210d0/, a(179)/0.046284796581314d0/
+      data x(180)/0.264687162208767d0/, a(180)/0.046968182816210d0/
+      data x(181)/0.217423643740007d0/, a(181)/0.047540165714830d0/
+      data x(182)/0.169644420423992d0/, a(182)/0.047999388596458d0/
+      data x(183)/0.121462819296120d0/, a(183)/0.048344762234802d0/
+      data x(184)/0.072993121787799d0/, a(184)/0.048575467441503d0/
+      data x(185)/0.024350292663424d0/, a(185)/0.048690957009139d0/
+c**** n=80
+      data x(186)/0.999553822651630d0/, a(186)/0.001144950003186d0/
+      data x(187)/0.997649864398237d0/, a(187)/0.002663533589512d0/
+      data x(188)/0.994227540965688d0/, a(188)/0.004180313124694d0/
+      data x(189)/0.989291302499755d0/, a(189)/0.005690922451403d0/
+      data x(190)/0.982848572738629d0/, a(190)/0.007192904768117d0/
+      data x(191)/0.974909140585727d0/, a(191)/0.008683945269260d0/
+      data x(192)/0.965485089043799d0/, a(192)/0.010161766041103d0/
+      data x(193)/0.954590766343634d0/, a(193)/0.011624114120797d0/
+      data x(194)/0.942242761309872d0/, a(194)/0.013068761592401d0/
+      data x(195)/0.928459877172445d0/, a(195)/0.014493508040509d0/
+      data x(196)/0.913263102571757d0/, a(196)/0.015896183583725d0/
+      data x(197)/0.896675579438770d0/, a(197)/0.017274652056269d0/
+      data x(198)/0.878722567678213d0/, a(198)/0.018626814208299d0/
+      data x(199)/0.859431406663111d0/, a(199)/0.019950610878141d0/
+      data x(200)/0.838831473580255d0/, a(200)/0.021244026115782d0/
+      data x(201)/0.816954138681463d0/, a(201)/0.022505090246332d0/
+      data x(202)/0.793832717504605d0/, a(202)/0.023731882865930d0/
+      data x(203)/0.769502420135041d0/, a(203)/0.024922535764115d0/
+      data x(204)/0.744000297583597d0/, a(204)/0.026075235767565d0/
+      data x(205)/0.717365185362099d0/, a(205)/0.027188227500486d0/
+      data x(206)/0.689637644342027d0/, a(206)/0.028259816057276d0/
+      data x(207)/0.660859898986119d0/, a(207)/0.029288369583267d0/
+      data x(208)/0.631075773046871d0/, a(208)/0.030272321759557d0/
+      data x(209)/0.600330622829751d0/, a(209)/0.031210174188114d0/
+      data x(210)/0.568671268122709d0/, a(210)/0.032100498673487d0/
+      data x(211)/0.536145920897131d0/, a(211)/0.032941939397645d0/
+      data x(212)/0.502804111888784d0/, a(212)/0.033733214984611d0/
+      data x(213)/0.468696615170544d0/, a(213)/0.034473120451753d0/
+      data x(214)/0.433875370831756d0/, a(214)/0.035160529044747d0/
+      data x(215)/0.398393405881969d0/, a(215)/0.035794393953416d0/
+      data x(216)/0.362304753499487d0/, a(216)/0.036373749905835d0/
+      data x(217)/0.325664370747701d0/, a(217)/0.036897714638276d0/
+      data x(218)/0.288528054884511d0/, a(218)/0.037365490238730d0/
+      data x(219)/0.250952358392272d0/, a(219)/0.037776364362001d0/
+      data x(220)/0.212994502857666d0/, a(220)/0.038129711314477d0/
+      data x(221)/0.174712291832646d0/, a(221)/0.038424993006959d0/
+      data x(222)/0.136164022809143d0/, a(222)/0.038661759774076d0/
+      data x(223)/0.097408398441584d0/, a(223)/0.038839651059051d0/
+      data x(224)/0.058504437152420d0/, a(224)/0.038958395962769d0/
+      data x(225)/0.019511383256793d0/, a(225)/0.039017813656306d0/
+c**** n=96
+      data x(226)/0.999689503883230d0/, a(226)/0.000796792065552d0/
+      data x(227)/0.998364375863181d0/, a(227)/0.001853960788946d0/
+      data x(228)/0.995981842987209d0/, a(228)/0.002910731817934d0/
+      data x(229)/0.992543900323762d0/, a(229)/0.003964554338444d0/
+      data x(230)/0.988054126329623d0/, a(230)/0.005014202742927d0/
+      data x(231)/0.982517263563014d0/, a(231)/0.006058545504235d0/
+      data x(232)/0.975939174585136d0/, a(232)/0.007096470791153d0/
+      data x(233)/0.968326828463264d0/, a(233)/0.008126876925698d0/
+      data x(234)/0.959688291448742d0/, a(234)/0.009148671230783d0/
+      data x(235)/0.950032717784437d0/, a(235)/0.010160770535008d0/
+      data x(236)/0.939370339752755d0/, a(236)/0.011162102099838d0/
+      data x(237)/0.927712456722308d0/, a(237)/0.012151604671088d0/
+      data x(238)/0.915071423120898d0/, a(238)/0.013128229566961d0/
+      data x(239)/0.901460635315852d0/, a(239)/0.014090941772314d0/
+      data x(240)/0.886894517402420d0/, a(240)/0.015038721026994d0/
+      data x(241)/0.871388505909296d0/, a(241)/0.015970562902562d0/
+      data x(242)/0.854959033434601d0/, a(242)/0.016885479864245d0/
+      data x(243)/0.837623511228187d0/, a(243)/0.017782502316045d0/
+      data x(244)/0.819400310737931d0/, a(244)/0.018660679627411d0/
+      data x(245)/0.800308744139140d0/, a(245)/0.019519081140145d0/
+      data x(246)/0.780369043867433d0/, a(246)/0.020356797154333d0/
+      data x(247)/0.759602341176647d0/, a(247)/0.021172939892191d0/
+      data x(248)/0.738030643744400d0/, a(248)/0.021966644438744d0/
+      data x(249)/0.715676812348967d0/, a(249)/0.022737069658329d0/
+      data x(250)/0.692564536642171d0/, a(250)/0.023483399085926d0/
+      data x(251)/0.668718310043916d0/, a(251)/0.024204841792364d0/
+      data x(252)/0.644163403784967d0/, a(252)/0.024900633222483d0/
+      data x(253)/0.618925840125468d0/, a(253)/0.025570036005349d0/
+      data x(254)/0.593032364777572d0/, a(254)/0.026212340735672d0/
+      data x(255)/0.566510418561397d0/, a(255)/0.026826866725591d0/
+      data x(256)/0.539388108324357d0/, a(256)/0.027412962726029d0/
+      data x(257)/0.511694177154667d0/, a(257)/0.027970007616848d0/
+      data x(258)/0.483457973920596d0/, a(258)/0.028497411065085d0/
+      data x(259)/0.454709422167743d0/, a(259)/0.028994614150555d0/
+      data x(260)/0.425478988407300d0/, a(260)/0.029461089958167d0/
+      data x(261)/0.395797649828908d0/, a(261)/0.029896344136328d0/
+      data x(262)/0.365696861472313d0/, a(262)/0.030299915420827d0/
+      data x(263)/0.335208522892625d0/, a(263)/0.030671376123669d0/
+      data x(264)/0.304364944354496d0/, a(264)/0.031010332586313d0/
+      data x(265)/0.273198812591049d0/, a(265)/0.031316425596861d0/
+      data x(266)/0.241743156163840d0/, a(266)/0.031589330770727d0/
+      data x(267)/0.210031310460567d0/, a(267)/0.031828758894411d0/
+      data x(268)/0.178096882367618d0/, a(268)/0.032034456231992d0/
+      data x(269)/0.145973714654896d0/, a(269)/0.032206204794030d0/
+      data x(270)/0.113695850110665d0/, a(270)/0.032343822568575d0/
+      data x(271)/0.081297495464425d0/, a(271)/0.032447163714064d0/
+      data x(272)/0.048812985136049d0/, a(272)/0.032516118713868d0/
+      data x(273)/0.016276744849602d0/, a(273)/0.032550614492363d0/
+c
+c
+c-----test n
+      alpha=0.5d0*(ax+bx)
+      beta=0.5d0*(bx-ax)
+      if( n.lt.1 .or. n.gt.96 ) go to 100
+      if(n.ne.1) go to 1
+      z(1)=alpha
+      w(1)=bx-ax
+      return
+c
+    1 if (n.le.16) go to 3
+      if (n.gt.24) go to 4
+      n=4*(n/4)
+      go to 3
+    4 if (n.gt.48) go to 5
+      n=8*(n/8)
+      go to 3
+    5 n=16*(n/16)
+c
+c----- set k equal to initial subscript and store results
+    3 k=ktab(n)
+      m=n/2
+      do 2 j=1,m
+      jtab=k-1+j
+      wtemp=beta*a(jtab)
+      delta=beta*x(jtab)
+      z(j)=alpha-delta
+      w(j)=wtemp
+      jp=n+1-j
+      z(jp)=alpha+delta
+      w(jp)=wtemp
+    2 continue
+      if((n-m-m).eq.0) return
+      z(m+1)=alpha
+      jmid=k+m
+      w(m+1)=beta*a(jmid)
+      return
+c
+  100 zn=n
+      write(6,200) zn
+  200 format(/////' error in gset. n has the non-permissible value',
+     1e11.3/' execution terminated.')
+      stop
+      end
+c********************************************************************
+c name:    dminv
+c        programmbibliothek rhrz bonn        28/11/78       dminv
+c                                            fortran iv     ibm 370/168
+c
+c purpose:
+c
+c invert a matrix
+c
+c usage:   call dminv (a,n,d,l,m)
+c
+c parameters:
+c
+c a:       input matrix, destroyed in computation and replaced by
+c          resultant inverse.
+c          double precision required.
+c
+c n:       order of matrix a
+c
+c d:       resultant determinant
+c          double precision required.
+c
+c l:       work vector of length n
+c
+c m:       work vector of length n
+c
+c remarks: matrix a must be a general matrix
+c
+c method:
+c
+c the standard gauss-jordan method is used. the determinant
+c is also calculated. a determinant of zero indicates that
+c the matrix is singular.
+c
+c programs required:
+c          none
+c
+c author:  ibm, ssp iii
+c
+c**********************************************************************
+      subroutine dminveff (a,n,d,l,m)
+      implicit real*8 (a-h,o-z)
+      dimension a(1),l(1),m(1)
+
+c
+c
+c        search for largest element
+c
+      d=1.d0
+      nk=-n
+      do 80 k=1,n
+      nk=nk+n
+      l(k)=k
+      m(k)=k
+      kk=nk+k
+      biga=a(kk)
+      do 20 j=k,n
+      iz=n*(j-1)
+      do 20 i=k,n
+      ij=iz+i
+   10 if (dabs(biga)-dabs(a(ij)))  15,20,20
+   15 biga=a(ij)
+      l(k)=i
+      m(k)=j
+   20 continue
+c
+c        interchange rows
+c
+      j=l(k)
+      if(j-k) 35,35,25
+   25 ki=k-n
+      do 30 i=1,n
+      ki=ki+n
+      hold=-a(ki)
+      ji=ki-k+j
+      a(ki)=a(ji)
+   30 a(ji) =hold
+c
+c        interchange columns
+c
+   35 i=m(k)
+      if(i-k) 45,45,38
+   38 jp=n*(i-1)
+      do 40 j=1,n
+      jk=nk+j
+      ji=jp+j
+      hold=-a(jk)
+      a(jk)=a(ji)
+   40 a(ji) =hold
+c
+c        divide column by minus pivot (value of pivot element is
+c        contained in biga)
+c
+   45 if(biga) 48,46,48
+   46 d=0.d0
+      return
+   48 do 55 i=1,n
+      if(i-k) 50,55,50
+   50 ik=nk+i
+      a(ik)=a(ik)/(-biga)
+   55 continue
+c
+c        reduce matrix
+c
+      do 65 i=1,n
+      ik=nk+i
+      hold=a(ik)
+      ij=i-n
+      do 65 j=1,n
+      ij=ij+n
+      if(i-k) 60,65,60
+   60 if(j-k) 62,65,62
+   62 kj=ij-i+k
+      a(ij)=hold*a(kj)+a(ij)
+   65 continue
+c
+c        divide row by pivot
+c
+      kj=k-n
+      do 75 j=1,n
+      kj=kj+n
+      if(j-k) 70,75,70
+   70 a(kj)=a(kj)/biga
+   75 continue
+c
+c        product of pivots
+c
+      d=d*biga
+c
+c        replace pivot by reciprocal
+c
+      a(kk)=1.d0/biga
+   80 continue
+c
+c        final row and column interchange
+c
+      k=n
+  100 k=(k-1)
+      if(k) 150,150,105
+  105 i=l(k)
+      if(i-k) 120,120,108
+  108 jq=n*(k-1)
+      jr=n*(i-1)
+      do 110 j=1,n
+      jk=jq+j
+      hold=a(jk)
+      ji=jr+j
+      a(jk)=-a(ji)
+  110 a(ji) =hold
+  120 j=m(k)
+      if(j-k) 100,100,125
+  125 ki=k-n
+      do 130 i=1,n
+      ki=ki+n
+      hold=a(ki)
+      ji=ki-k+j
+      a(ki)=-a(ji)
+  130 a(ji) =hold
+      go to 100
+  150 return
+      end
+c**************** this is the end of the program eff3nfn3lo **********************
